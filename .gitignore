@@ -78,6 +78,9 @@ dataset/scannetv2/superpoints
 dataset/scannetv2/normals
 dataset/scannetv2/scans_organized
 
+dataset/scannetv2/gp_deep_truekl_best
+dataset/scannetv2/gpfeats_pseudo_labels_variance_align_spp_pool
+
 dataset/scannet200/train
 dataset/scannet200/val
 dataset/scannet200/test

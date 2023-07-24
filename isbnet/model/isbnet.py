@@ -29,7 +29,6 @@ class ISBNet(nn.Module):
         channels=32,
         num_blocks=7,
         semantic_only=False,
-        semantic_classes=20,
         instance_classes=18,
         semantic_weight=None,
         sem2ins_classes=[],
@@ -51,8 +50,8 @@ class ISBNet(nn.Module):
         self.channels = channels
         self.num_blocks = num_blocks
         self.semantic_only = semantic_only
-        self.semantic_classes = semantic_classes
         self.instance_classes = instance_classes
+        self.semantic_classes = instance_classes + 1
         self.semantic_weight = semantic_weight
         self.sem2ins_classes = sem2ins_classes
         self.ignore_label = ignore_label
@@ -65,7 +64,7 @@ class ISBNet(nn.Module):
         self.criterion = criterion
         self.dataset_name = dataset_name
 
-        self.label_shift = semantic_classes - instance_classes
+        self.label_shift = 1
 
         self.trainall = trainall
 
@@ -91,14 +90,19 @@ class ISBNet(nn.Module):
         self.output_layer = spconv.SparseSequential(norm_fn(channels), nn.ReLU())
 
         # # NOTE point-wise prediction
-        self.semantic_linear = MLP(channels, semantic_classes, norm_fn=norm_fn, num_layers=2)
-        self.offset_linear = MLP(channels, 3, norm_fn=norm_fn, num_layers=2)
+        self.semantic_linear = MLP(channels, self.semantic_classes, norm_fn=norm_fn, num_layers=2)
+        # self.offset_linear = MLP(channels, 3, norm_fn=norm_fn, num_layers=2)
 
         # NOTE BBox
         self.offset_vertices_linear = MLP(channels, 3 * 2, norm_fn=norm_fn, num_layers=2)
         self.box_conf_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=2)
 
         if not self.semantic_only:
+
+
+            self.mu_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=3)
+            self.logvar_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=3)
+
             self.point_aggregator1 = LocalAggregator(
                 mlp_dim=self.channels,
                 n_sample=instance_head_cfg.n_sample_pa1,
@@ -230,6 +234,9 @@ class ISBNet(nn.Module):
         feats,
         semantic_labels,
         instance_labels,
+        prob_labels,
+        mu_labels,
+        var_labels,
         spps,
         spatial_shape,
         batch_size,
@@ -241,22 +248,32 @@ class ISBNet(nn.Module):
         voxel_instance_labels = instance_labels[p2v_map[:, 1].long()]
         voxel_instance_labels = get_cropped_instance_label(voxel_instance_labels)
 
+        voxel_prob_labels = prob_labels[p2v_map[:, 1].long()]
+        voxel_mu_labels = mu_labels[p2v_map[:, 1].long()]
+        voxel_var_labels = var_labels[p2v_map[:, 1].long()]
+
         voxel_spps = spps[p2v_map[:, 1].long()]
         voxel_spps = torch.unique(voxel_spps, return_inverse=True)[1]
 
         voxel_coords_float = voxelization(coords_float, p2v_map)
 
+        ### NOTE label_shift=0
         instance_cls, instance_box, centroid_offset_labels, corners_offset_labels = get_instance_info(
-            voxel_coords_float, voxel_instance_labels, voxel_semantic_labels, label_shift=self.label_shift
+            voxel_coords_float, voxel_instance_labels, voxel_semantic_labels, label_shift=0
         )
         ###################
 
         batch_inputs = dict(
             semantic_labels=voxel_semantic_labels,
             instance_labels=voxel_instance_labels,
+            prob_labels=voxel_prob_labels,
+            mu_labels=voxel_mu_labels,
+            var_labels=voxel_var_labels,
         )
 
         model_outputs = {}
+
+        voxel_rgb_feats = feats[:, :3].clone()[p2v_map[:, 1].long()]
 
         voxel_output_feats, voxel_batch_idxs = self.forward_backbone(
             feats, coords_float, voxel_coords, spatial_shape, batch_size, p2v_map
@@ -265,7 +282,7 @@ class ISBNet(nn.Module):
 
         (
             voxel_semantic_scores,
-            voxel_centroid_offset,
+            # voxel_centroid_offset,
             voxel_corners_offset,
             voxel_box_conf,
         ) = self.forward_pointwise_head(voxel_output_feats)
@@ -275,7 +292,7 @@ class ISBNet(nn.Module):
             batch_inputs.update(
                 dict(
                     coords_float=voxel_coords_float,
-                    centroid_offset_labels=centroid_offset_labels,
+                    # centroid_offset_labels=centroid_offset_labels,
                     corners_offset_labels=corners_offset_labels,
                 )
             )
@@ -283,7 +300,7 @@ class ISBNet(nn.Module):
             model_outputs.update(
                 dict(
                     semantic_scores=voxel_semantic_scores,
-                    centroid_offset=voxel_centroid_offset,
+                    # centroid_offset=voxel_centroid_offset,
                     corners_offset=voxel_corners_offset,
                     box_conf=voxel_box_conf,
                 )
@@ -301,7 +318,7 @@ class ISBNet(nn.Module):
             voxel_semantic_scores_sm, voxel_spps, dim=0, pool=self.use_spp_pool
         )
         spp_object_conditions = torch.any(
-            spp_semantic_scores_sm[:, self.label_shift :] >= self.filter_bg_thresh, dim=-1
+            spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1
         )
         object_conditions = spp_object_conditions[voxel_spps]
         object_idxs = torch.nonzero(object_conditions).view(-1)
@@ -348,6 +365,10 @@ class ISBNet(nn.Module):
                 pool=self.use_spp_pool,
             )
 
+            dc_prob_labels = custom_scatter_mean(voxel_prob_labels, voxel_spps, pool=self.use_spp_pool)
+            dc_mu_labels = custom_scatter_mean(voxel_mu_labels, voxel_spps, pool=self.use_spp_pool)
+            dc_var_labels = custom_scatter_mean(voxel_var_labels, voxel_spps, pool=self.use_spp_pool)
+            dc_rgb_feats = custom_scatter_mean(voxel_rgb_feats, voxel_spps, pool=self.use_spp_pool)
         else:
             idxs_subsample = random_downsample(voxel_batch_offsets_, batch_size, n_subsample=15000)
             dc_coords_float = voxel_coords_float_[idxs_subsample]
@@ -362,6 +383,9 @@ class ISBNet(nn.Module):
 
         dc_mask_features = self.mask_tower(torch.unsqueeze(dc_output_feats, dim=2).permute(2, 1, 0)).permute(2, 1, 0)
 
+        mu_pred = self.mu_linear(dc_output_feats).squeeze(-1)
+        logvar_pred = self.logvar_linear(dc_output_feats).squeeze(-1)
+
         # -------------------------------
 
         cls_logits, mask_logits, conf_logits, box_preds = self.forward_head(
@@ -372,11 +396,18 @@ class ISBNet(nn.Module):
         model_outputs.update(
             dict(
                 dc_inst_mask_arr=dc_inst_mask_arr,
+                dc_prob_labels=dc_prob_labels,
+                dc_mu_labels=dc_mu_labels,
+                dc_var_labels=dc_var_labels,
                 dc_batch_offsets=dc_batch_offsets,
+                dc_coords_float=dc_coords_float,
+                dc_rgb_feats=dc_rgb_feats,
                 cls_logits=cls_logits,
                 mask_logits=mask_logits,
                 conf_logits=conf_logits,
                 box_preds=box_preds,
+                mu_pred=mu_pred,
+                logvar_pred=logvar_pred,
             )
         )
 
@@ -672,10 +703,11 @@ class ISBNet(nn.Module):
         context = torch.no_grad if self.freeze_backbone else torch.enable_grad
         with context():
             semantic_scores = self.semantic_linear(output_feats)
-            centroid_offset = self.offset_linear(output_feats)
+            # centroid_offset = self.offset_linear(output_feats)
             corners_offset = self.offset_vertices_linear(output_feats)
             box_conf = self.box_conf_linear(output_feats).squeeze(-1)
-            return semantic_scores, centroid_offset, corners_offset, box_conf
+            # return semantic_scores, centroid_offset, corners_offset, box_conf
+            return semantic_scores, corners_offset, box_conf
 
     def spp_pool(self, voxel_coords_float, voxel_output_feats, voxel_box_preds, voxel_spps, voxel_batch_offsets):
         spp_batch_offsets = [0]

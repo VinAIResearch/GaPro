@@ -134,20 +134,64 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
             if i % 10 == 0:
                 logger.info(f"Infer scene {i+1}/{len(val_set)}")
 
-            if cfg.model.semantic_only:
-                point_eval.update(
-                    res["semantic_preds"],
-                    res["centroid_offset"],
-                    res["corners_offset"],
-                    res["semantic_labels"],
-                    res["centroid_offset_labels"],
-                    res["corners_offset_labels"],
-                    res["instance_labels"],
-                )
+            if cfg.data.train.type == 'scannetv2':
+                try:
+                    xyz, _, semantic_label, instance_label = torch.load(val_set.filenames[i])
+                except:
+                    
+                    semantic_label = np.zeros(res['coords_float'].shape[0], dtype=np.long)
+                    instance_label = np.zeros(res['coords_float'].shape[0], dtype=np.long)
+            
+                semantic_label[semantic_label!=-100] -= 2
+                semantic_label[(semantic_label==-1) | (semantic_label==-2)] = 18
             else:
-                all_pred_insts.append(res["pred_instances"])
-                all_sem_labels.append(res["semantic_labels"])
-                all_ins_labels.append(res["instance_labels"])
+                scan_id = osp.basename(val_set.filenames[i]).replace(val_set.suffix, "")
+                area_name = scan_id[:6]
+                room_name = scan_id[7:]
+
+                data = np.load(osp.join(val_set.data_root, 's3dis_box2mask', area_name, room_name + '.normals.instance.npy'))
+
+                xyz = data [:, :3].astype(np.float)
+                semantic_label = data [:, -2].astype (np.int32)
+                instance_label = data [:, -1].astype (np.int32)
+
+                inds = np.arange(res['coords_float'].shape[0])
+
+                semantic_label_list = []
+                instance_label_list = []
+                for i in range(4):
+                    piece = inds[i::4]
+                    semantic_label_list.append(semantic_label[piece])
+                    instance_label_list.append(instance_label[piece])
+
+                semantic_label = np.concatenate(semantic_label_list, 0)
+                instance_label = np.concatenate(instance_label_list, 0)
+
+            if cfg.model.semantic_only:
+
+                instance_num = int(instance_label.max()) + 1
+
+                center_label = np.ones((instance_label.shape[0], 3), dtype=np.float32) * -100.0
+                corners_label = np.ones((instance_label.shape[0], 3 * 2), dtype=np.float32) * -100.0
+
+                for i_ in range(instance_num):
+                    inst_idx_i = np.where(instance_label == i_)
+                    xyz_i = xyz[inst_idx_i]
+
+                    min_xyz_i = xyz_i.min(0)
+                    max_xyz_i = xyz_i.max(0)
+
+                    corners_label[inst_idx_i, :3] = min_xyz_i - xyz_i
+                    corners_label[inst_idx_i, 3:] = max_xyz_i - xyz_i
+
+                    centroid = xyz_i.mean(0)
+                    center_label[inst_idx_i] = centroid - xyz_i
+
+                point_eval.update(res['semantic_preds'], res['corners_offset'], semantic_label, corners_label, instance_label)
+            else:
+                all_pred_insts.append(res['pred_instances'])
+                all_sem_labels.append(semantic_label)
+                all_ins_labels.append(instance_label)
 
     global best_metric
 
@@ -228,7 +272,6 @@ def main():
 
     # model
     criterion = Criterion(
-        cfg.model.semantic_classes,
         cfg.model.instance_classes,
         cfg.model.semantic_weight,
         cfg.model.ignore_label,

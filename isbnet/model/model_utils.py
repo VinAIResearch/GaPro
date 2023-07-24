@@ -516,7 +516,7 @@ def gen_boundary_gt(
     return boundary
 
 
-def get_instance_info(coords_float, instance_labels, semantic_labels, label_shift=2):
+def get_instance_info(coords_float, instance_labels, semantic_labels, label_shift=0):
     instance_pointnum = []
     instance_cls = []
     instance_box = []
@@ -736,3 +736,9 @@ def get_spp_gt(
         )
 
     return spp_inst_mask_arr
+
+
+def is_within_bb_torch(points, bb_min, bb_max):
+    return torch.all(points >= bb_min, dim=-1) & torch.all(points <= bb_max, dim=-1)
+
+

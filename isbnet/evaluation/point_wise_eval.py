@@ -48,7 +48,7 @@ class PointWiseEval(object):
     def __init__(self, num_classes=20, ignore_label=-100) -> None:
         self.ignore_label = ignore_label
         self.pos_inds_arr = []
-        self.mae_arr = []
+        # self.mae_arr = []
         self.mae_vertices_arr = []
 
         self.pos_inds_inst_arr = []
@@ -61,7 +61,7 @@ class PointWiseEval(object):
         self.debug_acc = []
         self.debug_acc_num_pos = []
 
-    def update(self, pred_sem, pred_offset, pred_vertices_offset, gt_sem, gt_offset, gt_vertices_offset, gt_instance):
+    def update(self, pred_sem, pred_vertices_offset, gt_sem, gt_vertices_offset, gt_instance):
         pos_inds = gt_sem != self.ignore_label
 
         pred_sem = pred_sem[pos_inds]
@@ -81,10 +81,10 @@ class PointWiseEval(object):
 
         pos_inds_inst = gt_instance != self.ignore_label
 
-        gt_offset = gt_offset[pos_inds_inst]
-        pred_offset = pred_offset[pos_inds_inst]
+        # gt_offset = gt_offset[pos_inds_inst]
+        # pred_offset = pred_offset[pos_inds_inst]
         self.pos_inds_inst_arr.append(pos_inds_inst.sum())
-        self.mae_arr.append(np.abs(gt_offset - pred_offset).sum())
+        # self.mae_arr.append(np.abs(gt_offset - pred_offset).sum())
 
         gt_vertices_offset = gt_vertices_offset[pos_inds_inst]
         pred_vertices_offset = pred_vertices_offset[pos_inds_inst]
@@ -113,8 +113,8 @@ class PointWiseEval(object):
         logger.info(f"Acc: {acc:.1f}")
 
         # offset mae
-        mae = np.sum(np.array(self.mae_arr)) / np.sum(np.array(self.pos_inds_inst_arr))
-        logger.info(f"Offset MAE: {mae:.3f}")
+        # mae = np.sum(np.array(self.mae_arr)) / np.sum(np.array(self.pos_inds_inst_arr))
+        # logger.info(f"Offset MAE: {mae:.3f}")
 
         mae_vertices = np.sum(np.array(self.mae_vertices_arr)) / np.sum(np.array(self.pos_inds_inst_arr))
         logger.info(f"Offset vertices MAE: {mae_vertices:.3f}")

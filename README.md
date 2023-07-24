@@ -18,7 +18,7 @@
 8. [Acknowledgments](#Acknowledgments)
 9. [Contacts](#Contacts)
 
-# ISBNet: a 3D Point Cloud Instance Segmentation Network with Instance-aware Sampling and Box-aware Dynamic Convolution
+# GaPro: Box-Supervised 3D Point Cloud Instance Segmentation \\Using Gaussian Processes as Pseudo Labelers
 
 <a href="https://arxiv.org/abs/2303.00246"><img src="https://img.shields.io/badge/https%3A%2F%2Farxiv.org%2Fabs%2F2303.00246-arxiv-brightgreen"></a>
 
@@ -28,16 +28,16 @@
 VinAI Research, Vietnam
 
 > **Abstract**: 
-Existing 3D instance segmentation methods are predominant by a bottom-up design: a manually fine-tuned algorithm to group points into clusters followed by a refinement network. Relying on the quality of the clusters, these methods generate susceptible results when (1) nearby objects with the same semantic class are packed together, or (2) large objects with complex shapes. To address these shortcomings, we introduce ISBNet, a novel cluster-free method that represents instances as kernels and decodes instance masks via dynamic convolution. To efficiently generate a high-recall and discriminative kernel set, we propose a simple strategy, named Instance-aware Farthest Point Sampling, to sample candidates and leverage the point aggregation layer adopted from PointNet++ to encode candidate features. Moreover, we show that training 3D instance segmentation in a multi-task learning setting with an additional axis-aligned bounding box prediction head further boosts performance. Our method set new state-of-the-art results on ScanNetV2 (55.9), S3DIS (60.8), and STPLS3D (49.2) in terms of AP and retains fast inference time (237ms per scene on ScanNetV2).
+Instance segmentation on 3D point clouds (3DIS) is a longstanding challenge in computer vision, where state-of-the-art methods are mainly based on full supervision. As annotating ground truth dense instance masks is tedious and expensive, solving 3DIS with weak supervision has become more practical. In this paper, we propose GaPro, a new instance segmentation for 3D point clouds using axis-aligned 3D bounding box supervision. Our two-step approach involves generating pseudo labels from box annotations and training a 3DIS network with the resulting labels. Additionally, we employ the self-training strategy to improve the performance of our method further. We devise an effective Gaussian Process to generate pseudo instance masks from the bounding boxes and resolve ambiguities when they overlap, resulting in pseudo instance masks with their uncertainty values. Our experiments show that GaPro outperforms previous weakly supervised 3D instance segmentation methods and has competitive performance compared to state-of-the-art fully supervised ones. Furthermore, we demonstrate the robustness of our approach, where we can adapt various state-of-the-art fully supervised methods to the weak supervision task by using our pseudo labels for training.
 ![overview](docs/isbnet_arch.png)
 
 Details of the model architecture and experimental results can be found in [our paper](https://arxiv.org/abs/2303.00246v2):
 
 ```bibtext
-@inproceedings{ngo2023isbnet,
+@inproceedings{ngo2023gapro,
  author={Tuan Duc Ngo, Binh-Son Hua, Khoi Nguyen},
- booktitle={Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
- title={ISBNet: a 3D Point Cloud Instance Segmentation Network with Instance-aware Sampling and Box-aware Dynamic Convolution},
+ booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+ title={GaPro: Box-Supervised 3D Point Cloud Instance Segmentation \\Using Gaussian Processes as Pseudo Labelers},
  year= {2023}
 }
 ```

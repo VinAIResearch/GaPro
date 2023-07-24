@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from isbnet.model.matcher import HungarianMatcher
-from .model_utils import batch_giou_corres, giou_aabb
+from .model_utils import batch_giou_corres, giou_aabb, is_within_bb_torch
+import torch_scatter
 
 
 @torch.no_grad()
@@ -76,7 +77,6 @@ def compute_sigmoid_focal_loss(inputs, targets, num_boxes, alpha: float = 0.25, 
 class Criterion(nn.Module):
     def __init__(
         self,
-        semantic_classes=20,
         instance_classes=18,
         semantic_weight=None,
         ignore_label=-100,
@@ -93,8 +93,8 @@ class Criterion(nn.Module):
 
         self.ignore_label = ignore_label
 
-        self.label_shift = semantic_classes - instance_classes
-        self.semantic_classes = semantic_classes
+        self.label_shift = 1
+        self.semantic_classes = instance_classes + 1
         self.instance_classes = instance_classes
         self.semantic_weight = semantic_weight
         self.eos_coef = eos_coef
@@ -129,17 +129,19 @@ class Criterion(nn.Module):
             "iou_loss": 0.5,
             "box_loss": 0.5,
             "giou_loss": 0.5,
+            "levelset_loss": 0.5,
+            "kl_loss": 0.1
         }
 
     def cal_point_wise_loss(
         self,
         semantic_scores,
-        centroid_offset,
+        # centroid_offset,
         corners_offset,
         box_conf,
         semantic_labels,
         instance_labels,
-        centroid_offset_labels,
+        # centroid_offset_labels,
         corners_offset_labels,
         coords_float,
     ):
@@ -158,15 +160,16 @@ class Criterion(nn.Module):
         pos_inds = instance_labels != self.ignore_label
         total_pos_inds = pos_inds.sum()
         if total_pos_inds == 0:
-            offset_loss = 0 * centroid_offset.sum()
+            # offset_loss = 0 * centroid_offset.sum()
             offset_vertices_loss = 0 * corners_offset.sum()
             conf_loss = 0 * box_conf.sum()
             giou_loss = 0 * box_conf.sum()
         else:
-            offset_loss = (
-                F.l1_loss(centroid_offset[pos_inds], centroid_offset_labels[pos_inds], reduction="sum")
-                / total_pos_inds
-            )
+            # offset_loss = (
+            #     F.l1_loss(centroid_offset[pos_inds], centroid_offset_labels[pos_inds], reduction="sum")
+            #     / total_pos_inds
+            # )
+
             offset_vertices_loss = (
                 F.l1_loss(corners_offset[pos_inds], corners_offset_labels[pos_inds], reduction="sum") / total_pos_inds
             )
@@ -180,12 +183,42 @@ class Criterion(nn.Module):
             iou_gt = iou_gt.detach()
             conf_loss = F.mse_loss(box_conf[pos_inds], iou_gt, reduction="sum") / total_pos_inds
 
-        losses["pw_center_loss"] = offset_loss * self.voxel_scale / 50.0
+        # losses["pw_center_loss"] = offset_loss * self.voxel_scale / 50.0
         losses["pw_corners_loss"] = offset_vertices_loss * self.voxel_scale / 50.0
         losses["pw_giou_loss"] = giou_loss
         losses["pw_conf_loss"] = conf_loss
 
         return losses
+    
+    def levelset_loss(self, levelset_coords_, levelset_feats_, mask_logit_pred, box_label):
+        num_gts = len(box_label)
+
+        is_within_conds = is_within_bb_torch(levelset_coords_[None, :, :], box_label[:, None, :3] - 0.005, box_label[:, None, 3:] + 0.005) # N_box, N_points
+            
+        min_points_conds = (torch.sum(is_within_conds, dim=1) > 0)
+
+        is_within_conds_ = is_within_conds[min_points_conds] # N_box_, N_points
+        mask_logit_pred_ = mask_logit_pred[min_points_conds]
+
+        box_inds, point_inds = torch.nonzero((is_within_conds_), as_tuple=True)
+
+
+        mask_logit_pred_sm_insts = torch.sigmoid(mask_logit_pred_[box_inds, point_inds]) # M
+        levelset_feats_insts = levelset_feats_[point_inds, :] # M, f
+
+        _, box_inds_norm = torch.unique(box_inds, return_inverse=True)
+
+        ave_similarity = torch_scatter.scatter((levelset_feats_insts * mask_logit_pred_sm_insts[:, None]).float(), index=box_inds_norm, dim=0, reduce="sum") / torch_scatter.scatter(mask_logit_pred_sm_insts.float(), index=box_inds_norm, reduce="sum").clamp(min=0.00001)[:, None]
+
+        region_level = levelset_feats_insts - ave_similarity[box_inds_norm, :]
+
+        region_level_loss = region_level * region_level * mask_logit_pred_sm_insts[:, None]
+        region_level_loss = torch_scatter.scatter(region_level_loss.sum(dim=1).float(), index=box_inds_norm, reduce="mean") # n_box
+
+
+        region_level_loss = region_level_loss.sum() / (num_gts + 1e-4)
+
+        return region_level_loss
 
     def single_layer_loss(
         self,
@@ -193,6 +226,10 @@ class Criterion(nn.Module):
         mask_logits_list,
         conf_logits,
         box_preds,
+        prob_labels,
+        batch_offset,
+        levelset_feats,
+        levelset_coords,
         row_indices,
         cls_labels,
         inst_labels,
@@ -206,10 +243,13 @@ class Criterion(nn.Module):
 
         num_gt = 0
         for b in range(batch_size):
+            b_s, b_e = batch_offset[b], batch_offset[b+1]
             mask_logit_b = mask_logits_list[b]
             cls_logit_b = cls_logits[b]  # n_queries x n_classes
             conf_logits_b = conf_logits[b]  # n_queries
             box_preds_b = box_preds[b]
+
+            prob_labels_b = prob_labels[b_s:b_e]
 
             pred_inds, cls_label, inst_label, box_label = row_indices[b], cls_labels[b], inst_labels[b], box_labels[b]
 
@@ -233,7 +273,9 @@ class Criterion(nn.Module):
             )
 
             bce_loss = F.binary_cross_entropy_with_logits(mask_logit_pred, inst_label, reduction="none")
-            bce_loss = bce_loss.mean(1).sum() / (num_gt_batch + 1e-6)
+            bce_loss = ((bce_loss * prob_labels_b).sum() / prob_labels_b.sum()).sum() / (num_gt_batch + 1e-6)
+            # bce_loss = bce_loss.mean(1).sum() / (num_gt_batch + 1e-6)
+
             loss_dict["bce_loss"] = loss_dict["bce_loss"] + bce_loss
 
             gt_iou = get_iou(mask_logit_pred, inst_label)
@@ -264,6 +306,15 @@ class Criterion(nn.Module):
 
             loss_dict["giou_loss"] = loss_dict["giou_loss"] + torch.sum(1 - giou) / num_gt_batch
 
+            # NOTE level_set loss
+            levelset_coords_ = levelset_coords[b_s:b_e, :]
+            levelset_feats_ = levelset_feats[b_s:b_e, :]
+
+            region_level_loss = self.levelset_loss(levelset_coords_, levelset_feats_, mask_logit_pred, box_label)
+            loss_dict["levelset_loss"] = loss_dict["levelset_loss"] + region_level_loss
+            
+
+
         for k in loss_dict.keys():
             loss_dict[k] = loss_dict[k] / batch_size
 
@@ -285,22 +336,22 @@ class Criterion(nn.Module):
         if self.semantic_only or self.trainall:
             # '''semantic loss'''
             semantic_scores = model_outputs["semantic_scores"]
-            centroid_offset = model_outputs["centroid_offset"]
+            # centroid_offset = model_outputs["centroid_offset"]
             corners_offset = model_outputs["corners_offset"]
             box_conf = model_outputs["box_conf"]
 
             coords_float = batch_inputs["coords_float"]
-            centroid_offset_labels = batch_inputs["centroid_offset_labels"]
+            # centroid_offset_labels = batch_inputs["centroid_offset_labels"]
             corners_offset_labels = batch_inputs["corners_offset_labels"]
 
             point_wise_loss = self.cal_point_wise_loss(
                 semantic_scores,
-                centroid_offset,
+                # centroid_offset,
                 corners_offset,
                 box_conf,
                 semantic_labels,
                 instance_labels,
-                centroid_offset_labels,
+                # centroid_offset_labels,
                 corners_offset_labels,
                 coords_float,
             )
@@ -327,6 +378,14 @@ class Criterion(nn.Module):
         box_preds = model_outputs["box_preds"]
 
         dc_inst_mask_arr = model_outputs["dc_inst_mask_arr"]
+        dc_prob_labels = model_outputs["dc_prob_labels"]
+        dc_mu_labels = model_outputs["dc_mu_labels"]
+        dc_var_labels = model_outputs["dc_var_labels"]
+        dc_batch_offsets = model_outputs["dc_batch_offsets"]
+
+
+        dc_rgb_feats = model_outputs["dc_rgb_feats"]
+        dc_coords_float = model_outputs["dc_coords_float"]
 
         batch_size, n_queries = cls_logits.shape[:2]
 
@@ -351,6 +410,10 @@ class Criterion(nn.Module):
             mask_logits,
             conf_logits,
             box_preds,
+            dc_prob_labels,
+            dc_batch_offsets,
+            dc_rgb_feats,
+            dc_coords_float,
             row_indices,
             cls_labels,
             inst_labels,
@@ -373,6 +436,10 @@ class Criterion(nn.Module):
             mask_logits,
             conf_logits,
             box_preds,
+            dc_prob_labels,
+            dc_batch_offsets,
+            dc_rgb_feats,
+            dc_coords_float,
             aux_row_indices,
             aux_cls_labels,
             aux_inst_labels,
@@ -383,5 +450,34 @@ class Criterion(nn.Module):
         coef_aux = 2.0
         for k, v in self.loss_weight.items():
             loss_dict["aux_" + k] = loss_dict["aux_" + k] + aux_main_loss_dict[k] * v * coef_aux
+
+
+        mu_labels = model_outputs["dc_mu_labels"]
+        var_labels = model_outputs["dc_var_labels"]
+        mu_pred = model_outputs["mu_pred"]
+        logvar_pred = model_outputs["logvar_pred"]
+
+        loss_dict["kl_loss"] = torch.tensor(0.0, requires_grad=True, device=instance_labels.device, dtype=torch.float)
+
+        epsilon = 1e-4  
+        mask_kl_varzero = (mu_labels != -100) & (var_labels != -100) & (var_labels <= epsilon)
+        mask_kl_var = (mu_labels != -100) & (var_labels != -100) & (var_labels > epsilon)
+
+
+        if mask_kl_varzero.sum() > 0:
+            loss_kl_varzero = (torch.exp(logvar_pred[mask_kl_varzero]) -1)**2 + (mu_pred[mask_kl_varzero] - mu_labels[mask_kl_varzero])**2
+            loss_kl_varzero = loss_kl_varzero.sum() / (mask_kl_varzero.sum() + 1e-4)
+
+            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_varzero * self.loss_weight["kl_loss"] 
+
+        if mask_kl_var.sum() > 0:
+            loss_kl_var = (logvar_pred[mask_kl_var] - torch.log(var_labels[mask_kl_var])) + \
+                        ((mu_pred[mask_kl_var] - mu_labels[mask_kl_var])**2 + var_labels[mask_kl_var]**2)  * (torch.exp(-2*logvar_pred[mask_kl_var])) \
+                        - 0.5
+            loss_kl_var = loss_kl_var.sum() / (mask_kl_var.sum() + 1e-4)
+
+            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_var * self.loss_weight["kl_loss"] 
+
+
 
         return loss_dict

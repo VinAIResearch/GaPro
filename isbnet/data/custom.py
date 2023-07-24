@@ -14,8 +14,9 @@ class CustomDataset(Dataset):
 
     CLASSES = None
 
-    def __init__(self, data_root, prefix, suffix, voxel_cfg=None, training=True, repeat=1, logger=None):
+    def __init__(self, data_root, label_type, prefix, suffix, voxel_cfg=None, training=True, repeat=1, logger=None):
         self.data_root = data_root
+        self.label_type = label_type
         self.prefix = prefix
         self.suffix = suffix
         self.voxel_cfg = voxel_cfg
@@ -118,7 +119,7 @@ class CustomDataset(Dataset):
             j += 1
         return instance_label
 
-    def transform_train(self, xyz, rgb, semantic_label, instance_label, spp, aug_prob=1.0):
+    def transform_train(self, xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp, aug_prob=1.0):
         xyz_middle = self.dataAugment(xyz, True, True, True, aug_prob)
         xyz = xyz_middle * self.voxel_cfg.scale
 
@@ -143,11 +144,16 @@ class CustomDataset(Dataset):
         semantic_label = semantic_label[valid_idxs]
         instance_label = self.getCroppedInstLabel(instance_label, valid_idxs)
 
+
+        prob_label = prob_label[valid_idxs]
+        mu_label = mu_label[valid_idxs]
+        var_label = var_label[valid_idxs]
+
         spp = spp[valid_idxs]
 
-        return xyz, xyz_middle, rgb, semantic_label, instance_label, spp
+        return xyz, xyz_middle, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp
 
-    def transform_test(self, xyz, rgb, semantic_label, instance_label, spp):
+    def transform_test(self, xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp):
         xyz_middle = self.dataAugment(xyz, False, False, False)
         xyz = xyz_middle * self.voxel_cfg.scale
         xyz -= xyz.min(0)
@@ -155,7 +161,7 @@ class CustomDataset(Dataset):
 
         instance_label = self.getCroppedInstLabel(instance_label, valid_idxs)
 
-        return xyz, xyz_middle, rgb, semantic_label, instance_label, spp
+        return xyz, xyz_middle, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp
 
     def __getitem__(self, index):
         filename = self.filenames[index]
@@ -163,17 +169,19 @@ class CustomDataset(Dataset):
 
         # if scan_id in ['scene0636_00', 'scene0154_00']:
         #     return self.__getitem__(0)
-        xyz, rgb, semantic_label, instance_label, spp = self.load(filename)
+        # xyz, rgb, semantic_label, instance_label, spp = self.load(filename)
+        xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp = self.load(filename)
+
 
         data = (
-            self.transform_train(xyz, rgb, semantic_label, instance_label, spp)
+            self.transform_train(xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp)
             if self.training
-            else self.transform_test(xyz, rgb, semantic_label, instance_label, spp)
+            else self.transform_test(xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp)
         )
         if data is None:
             return None
 
-        xyz, xyz_middle, rgb, semantic_label, instance_label, spp = data
+        xyz, xyz_middle, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp = data
 
         inst_num = int(instance_label.max()) + 1
 
@@ -185,6 +193,9 @@ class CustomDataset(Dataset):
 
         semantic_label = torch.from_numpy(semantic_label)
         instance_label = torch.from_numpy(instance_label)
+        prob_label = torch.from_numpy(prob_label)
+        mu_label = torch.from_numpy(mu_label)
+        var_label = torch.from_numpy(var_label)
 
         spp = torch.from_numpy(spp)
         spp = torch.unique(spp, return_inverse=True)[1]
@@ -196,6 +207,9 @@ class CustomDataset(Dataset):
             feat,
             semantic_label,
             instance_label,
+            prob_label,
+            mu_label,
+            var_label,
             spp,
             inst_num,
         )
@@ -207,6 +221,9 @@ class CustomDataset(Dataset):
         feats = []
         semantic_labels = []
         instance_labels = []
+        prob_labels = []
+        mu_labels = []
+        var_labels = []
 
         spps = []
 
@@ -227,6 +244,9 @@ class CustomDataset(Dataset):
                 feat,
                 semantic_label,
                 instance_label,
+                prob_label,
+                mu_label,
+                var_label,
                 spp,
                 inst_num,
             ) = data
@@ -242,6 +262,11 @@ class CustomDataset(Dataset):
             feats.append(feat)
             semantic_labels.append(semantic_label)
             instance_labels.append(instance_label)
+
+            prob_labels.append(prob_label)
+            mu_labels.append(mu_label)
+            var_labels.append(var_label)
+
             spps.append(spp)
 
             instance_batch_offsets.append(total_inst_num)
@@ -258,6 +283,10 @@ class CustomDataset(Dataset):
         feats = torch.cat(feats, 0)  # float (N, C)
         semantic_labels = torch.cat(semantic_labels, 0).long()  # long (N)
         instance_labels = torch.cat(instance_labels, 0).long()  # long (N)
+        prob_labels = torch.cat(prob_labels).float()
+        mu_labels = torch.cat(mu_labels).float()
+        var_labels = torch.cat(var_labels).float()
+
         spps = torch.cat(spps, 0).long()
 
         instance_batch_offsets = torch.tensor(instance_batch_offsets, dtype=torch.long)
@@ -276,6 +305,9 @@ class CustomDataset(Dataset):
             "feats": feats,
             "semantic_labels": semantic_labels,
             "instance_labels": instance_labels,
+            "prob_labels": prob_labels,
+            "mu_labels": mu_labels,
+            'var_labels': var_labels,
             "spps": spps,
             "instance_batch_offsets": instance_batch_offsets,
             "spatial_shape": spatial_shape,
