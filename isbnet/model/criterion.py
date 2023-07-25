@@ -367,9 +367,9 @@ class Criterion(nn.Module):
 
         for k in self.loss_weight:
             loss_dict[k] = torch.tensor(0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float)
-            loss_dict["aux_" + k] = torch.tensor(
-                0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float
-            )
+            # loss_dict["aux_" + k] = torch.tensor(
+            #     0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float
+            # )
 
         """ Main loss """
         cls_logits = model_outputs["cls_logits"]
@@ -426,30 +426,30 @@ class Criterion(nn.Module):
 
         # NOTE aux loss
 
-        aux_row_indices = aux_gt_dict["row_indices"]
-        aux_inst_labels = aux_gt_dict["inst_labels"]
-        aux_cls_labels = aux_gt_dict["cls_labels"]
-        aux_box_labels = aux_gt_dict["box_labels"]
+        # aux_row_indices = aux_gt_dict["row_indices"]
+        # aux_inst_labels = aux_gt_dict["inst_labels"]
+        # aux_cls_labels = aux_gt_dict["cls_labels"]
+        # aux_box_labels = aux_gt_dict["box_labels"]
 
-        aux_main_loss_dict = self.single_layer_loss(
-            cls_logits,
-            mask_logits,
-            conf_logits,
-            box_preds,
-            dc_prob_labels,
-            dc_batch_offsets,
-            dc_rgb_feats,
-            dc_coords_float,
-            aux_row_indices,
-            aux_cls_labels,
-            aux_inst_labels,
-            aux_box_labels,
-            batch_size,
-        )
+        # aux_main_loss_dict = self.single_layer_loss(
+        #     cls_logits,
+        #     mask_logits,
+        #     conf_logits,
+        #     box_preds,
+        #     dc_prob_labels,
+        #     dc_batch_offsets,
+        #     dc_rgb_feats,
+        #     dc_coords_float,
+        #     aux_row_indices,
+        #     aux_cls_labels,
+        #     aux_inst_labels,
+        #     aux_box_labels,
+        #     batch_size,
+        # )
 
-        coef_aux = 2.0
-        for k, v in self.loss_weight.items():
-            loss_dict["aux_" + k] = loss_dict["aux_" + k] + aux_main_loss_dict[k] * v * coef_aux
+        # coef_aux = 2.0
+        # for k, v in self.loss_weight.items():
+        #     loss_dict["aux_" + k] = loss_dict["aux_" + k] + aux_main_loss_dict[k] * v * coef_aux
 
 
         mu_labels = model_outputs["dc_mu_labels"]

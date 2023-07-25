@@ -466,7 +466,6 @@ class ISBNet(nn.Module):
 
         (
             voxel_semantic_scores,
-            voxel_centroid_offset,
             voxel_corners_offset,
             voxel_box_conf,
         ) = self.forward_pointwise_head(voxel_output_feats)
@@ -482,7 +481,7 @@ class ISBNet(nn.Module):
 
             ret.update(
                 semantic_preds=voxel_semantic_scores_pred[v2p_map.long()].cpu().numpy(),
-                centroid_offset=voxel_centroid_offset[v2p_map.long()].cpu().numpy(),
+                # centroid_offset=voxel_centroid_offset[v2p_map.long()].cpu().numpy(),
                 corners_offset=voxel_corners_offset[v2p_map.long()].cpu().numpy(),
                 centroid_offset_labels=centroid_offset_labels.cpu().numpy(),
                 corners_offset_labels=corners_offset_labels.cpu().numpy(),
@@ -968,12 +967,8 @@ class ISBNet(nn.Module):
 
             if self.dataset_name == "scannetv2":
                 pred["label_id"] = cls_final[i] + 1
-            elif self.dataset_name == "scannet200":
-                pred["label_id"] = cls_final[i] + 1
             elif self.dataset_name == "s3dis":
                 pred["label_id"] = cls_final[i] + 3
-            elif self.dataset_name == "stpls3d":
-                pred["label_id"] = cls_final[i] + 1
             else:
                 raise Exception("Invalid dataset name")
 

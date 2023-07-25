@@ -245,16 +245,17 @@ class ScanNetEval(object):
         """get gt instances, only consider the valid class labels even in class
         agnostic setting."""
 
-        # NOTE process label gt for each type of dataset
-        if self.dataset_name == "scannetv2":
-            gts_sem = gts_sem - 2 + 1
-        elif self.dataset_name == "scannet200":
-            gts_sem = gts_sem - 2 + 1
-        elif self.dataset_name == "stpls3d":
+                # NOTE process label gt for each type of dataset
+        if self.dataset_name == 'scannetv2':
+            gts_sem = gts_sem + 1
+            gts_sem[gts_sem==19] = 0
+        elif self.dataset_name == 'stpls3d':
             gts_sem = gts_sem - 1 + 1
         else:
             gts_sem = gts_sem + 1
         gts_sem[gts_sem < 0] = 0
+
+
         gts_ins = gts_ins + 1
         ignore_inds = gts_ins < 0
         # scannet encoding rule
