@@ -65,37 +65,6 @@ dist/
 *.npy
 *.zip
 
-tools/train_slurm.sh
-
-dataset/scannetv2/scans
-dataset/scannetv2/scans_test
-dataset/scannetv2/train
-dataset/scannetv2/val
-dataset/scannetv2/test
-dataset/scannetv2/val_gt
-dataset/scannetv2/scannetv2-labels.combined.tsv
-dataset/scannetv2/superpoints
-dataset/scannetv2/normals
-dataset/scannetv2/scans_organized
-
-dataset/scannetv2/gp_deep_truekl_best
-dataset/scannetv2/gpfeats_pseudo_labels_variance_align_spp_pool
-
-dataset/scannet200/train
-dataset/scannet200/val
-dataset/scannet200/test
-dataset/scannet200/superpoints
-
-dataset/s3dis/preprocess
-dataset/s3dis/preprocess_sample
-dataset/s3dis/Stanford3dDataset_v1.2
-dataset/s3dis/superpoints
-
-dataset/stpls3d/train
-dataset/stpls3d/val
-dataset/stpls3d/Synthetic_v3_InstanceSegmentation
-
-dataset/semantic_kitti/sequences
 
 work_dirs/
 pretrains/
