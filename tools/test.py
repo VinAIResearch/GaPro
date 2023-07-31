@@ -109,7 +109,7 @@ def main():
 
     time_arr = []
 
-    point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes)
+    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes+1)
     scannet_eval = ScanNetEval(dataset.CLASSES, dataset_name=cfg.data.train.type)
 
     if cfg.data.test.type == "s3dis":

@@ -335,6 +335,20 @@ class ISBNet(nn.Module):
         voxel_box_preds_ = voxel_box_preds[object_idxs]
         voxel_batch_offsets_ = get_batch_offsets(voxel_batch_idxs_, batch_size)
 
+        # NOTE check cuda error:
+        if len(voxel_batch_offsets_) != batch_size+1:
+            loss_dict = {
+                "placeholder": torch.tensor(0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float)
+            }
+            return self.parse_losses(loss_dict)
+        
+        batch_numvoxels = voxel_batch_offsets_[1:] - voxel_batch_offsets_[:-1]
+        if torch.any(batch_numvoxels <= 100):
+            loss_dict = {
+                "placeholder": torch.tensor(0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float)
+            }
+            return self.parse_losses(loss_dict)
+
         query_locs, query_feats, query_boxes, query_inds1 = self.point_aggregator1(
             voxel_coords_float_,
             voxel_output_feats_,
@@ -496,7 +510,7 @@ class ISBNet(nn.Module):
         )
 
         spp_object_conditions = torch.any(
-            spp_semantic_scores_sm[:, self.label_shift :] >= self.filter_bg_thresh, dim=-1
+            spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1
         )
         object_conditions = spp_object_conditions[voxel_spps]
 
