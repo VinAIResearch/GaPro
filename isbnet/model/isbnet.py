@@ -968,12 +968,8 @@ class ISBNet(nn.Module):
 
             if self.dataset_name == "scannetv2":
                 pred["label_id"] = cls_final[i] + 1
-            elif self.dataset_name == "scannet200":
-                pred["label_id"] = cls_final[i] + 1
             elif self.dataset_name == "s3dis":
                 pred["label_id"] = cls_final[i] + 3
-            elif self.dataset_name == "stpls3d":
-                pred["label_id"] = cls_final[i] + 1
             else:
                 raise Exception("Invalid dataset name")
 
