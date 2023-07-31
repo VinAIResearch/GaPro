@@ -113,7 +113,7 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
 
     val_set = val_loader.dataset
 
-    point_eval = PointWiseEval(num_classes=cfg.model.semantic_classes)
+    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes+1)
     scannet_eval = ScanNetEval(val_set.CLASSES, dataset_name=cfg.data.train.type)
 
     torch.cuda.empty_cache()
