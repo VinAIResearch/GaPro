@@ -1,15 +1,13 @@
-import numpy as np
-import torch
-import yaml
-from munch import Munch
-from torch.nn.parallel import DistributedDataParallel
-
 import argparse
 import datetime
 import os
 import os.path as osp
 import shutil
 import time
+
+import numpy as np
+import torch
+import yaml
 from isbnet.data import build_dataloader, build_dataset
 from isbnet.evaluation import PointWiseEval, ScanNetEval
 from isbnet.model import ISBNet
@@ -29,6 +27,8 @@ from isbnet.util import (
     is_power2,
     load_checkpoint,
 )
+from munch import Munch
+from torch.nn.parallel import DistributedDataParallel
 
 
 np.random.seed(0)
@@ -113,7 +113,7 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
 
     val_set = val_loader.dataset
 
-    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes+1)
+    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes + 1)
     scannet_eval = ScanNetEval(val_set.CLASSES, dataset_name=cfg.data.train.type)
 
     torch.cuda.empty_cache()
@@ -134,28 +134,30 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
             if i % 10 == 0:
                 logger.info(f"Infer scene {i+1}/{len(val_set)}")
 
-            if cfg.data.train.type == 'scannetv2':
+            if cfg.data.train.type == "scannetv2":
                 try:
                     xyz, _, semantic_label, instance_label = torch.load(val_set.filenames[i])
                 except:
-                    
-                    semantic_label = np.zeros(res['coords_float'].shape[0], dtype=np.long)
-                    instance_label = np.zeros(res['coords_float'].shape[0], dtype=np.long)
-            
-                semantic_label[semantic_label!=-100] -= 2
-                semantic_label[(semantic_label==-1) | (semantic_label==-2)] = 18
+
+                    semantic_label = np.zeros(res["coords_float"].shape[0], dtype=np.long)
+                    instance_label = np.zeros(res["coords_float"].shape[0], dtype=np.long)
+
+                semantic_label[semantic_label != -100] -= 2
+                semantic_label[(semantic_label == -1) | (semantic_label == -2)] = 18
             else:
                 scan_id = osp.basename(val_set.filenames[i]).replace(val_set.suffix, "")
                 area_name = scan_id[:6]
                 room_name = scan_id[7:]
 
-                data = np.load(osp.join(val_set.data_root, 's3dis_box2mask', area_name, room_name + '.normals.instance.npy'))
+                data = np.load(
+                    osp.join(val_set.data_root, "s3dis_box2mask", area_name, room_name + ".normals.instance.npy")
+                )
 
-                xyz = data [:, :3].astype(np.float)
-                semantic_label = data [:, -2].astype (np.int32)
-                instance_label = data [:, -1].astype (np.int32)
+                xyz = data[:, :3].astype(np.float)
+                semantic_label = data[:, -2].astype(np.int32)
+                instance_label = data[:, -1].astype(np.int32)
 
-                inds = np.arange(res['coords_float'].shape[0])
+                inds = np.arange(res["coords_float"].shape[0])
 
                 semantic_label_list = []
                 instance_label_list = []
@@ -187,9 +189,11 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
                     centroid = xyz_i.mean(0)
                     center_label[inst_idx_i] = centroid - xyz_i
 
-                point_eval.update(res['semantic_preds'], res['corners_offset'], semantic_label, corners_label, instance_label)
+                point_eval.update(
+                    res["semantic_preds"], res["corners_offset"], semantic_label, corners_label, instance_label
+                )
             else:
-                all_pred_insts.append(res['pred_instances'])
+                all_pred_insts.append(res["pred_instances"])
                 all_sem_labels.append(semantic_label)
                 all_ins_labels.append(instance_label)
 
@@ -197,11 +201,11 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
 
     if cfg.model.semantic_only:
         logger.info("Evaluate semantic segmentation and offset MAE")
-        miou, acc, mae = point_eval.get_eval(logger)
+        miou, acc, mae_vertices = point_eval.get_eval(logger)
 
         writer.add_scalar("val/mIoU", miou, epoch)
         writer.add_scalar("val/Acc", acc, epoch)
-        writer.add_scalar("val/Offset MAE", mae, epoch)
+        writer.add_scalar("val/Offset vertices MAE", mae_vertices, epoch)
 
         if best_metric < miou:
             best_metric = miou

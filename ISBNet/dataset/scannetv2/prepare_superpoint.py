@@ -1,9 +1,9 @@
-import numpy as np
-import torch
-
-import open3d as o3d
 import os
+
+import numpy as np
+import open3d as o3d
 import segmentator
+import torch
 
 
 def get_superpoint(mesh_file):

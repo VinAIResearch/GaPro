@@ -1,11 +1,11 @@
-import numpy as np
-import torch
-
 import argparse
 import math
-import open3d as o3d
 import os
 from operator import itemgetter
+
+import numpy as np
+import open3d as o3d
+import torch
 
 
 # yapf:disable

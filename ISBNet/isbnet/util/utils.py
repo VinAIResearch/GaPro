@@ -1,10 +1,11 @@
-import torch
-from torch import distributed as dist
-
 import functools
 import os
 from collections import OrderedDict
 from math import cos, pi
+
+import torch
+from torch import distributed as dist
+
 from .dist import get_dist_info, master_only
 
 

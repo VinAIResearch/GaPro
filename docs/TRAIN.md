@@ -1,44 +1,49 @@
 # Training and Testing guide
 
-## Training
+## Generate pseudo-labels from 3D axis-aligned bounding box labels.
 
-1\) ScanNetV2 dataset
-
-Pretrain the 3D Unet backbone from scratch
-
+Run the script:
 ```
-python3 tools/train.py configs/scannetv2/isbnet_backbone_scannetv2.yaml --only_backbone --exp_name pretrain_backbone
+cd ./gapro
+python3 gen_ps.py --save_folder dataset/scannetv2/gaussian_process_kl_pseudo_labels
 ```
 
-We also provided the pre-trained 3D backbone models of [ScanNetV2 val](https://drive.google.com/file/d/1DQiMOsZpr9PgaKx9aK8rJhhIvh0vodWd/view?usp=sharing), [ScanNetV2-200 val](https://drive.google.com/file/d/10Izd3KFFcBALuANBKbiXbSofVua4BirS/view?usp=share_link), [S3DIS val Area 5](https://drive.google.com/file/d/1SHqrtrb94HQMa4Ml6X6_4JHZbRDqlTEv/view?usp=sharing), and [STPLS3D val](https://drive.google.com/file/d/1DVKyl2PE73DhhRoy5VQkjaE1g43ihj50/view?usp=share_link). Alternatively, we can also finetune other pre-trained backbones from [SoftGroup](https://github.com/thangvubk/SoftGroup) or [SSTNet](https://github.com/Gorilla-Lab-SCUT/SSTNet) with fewer epoches by set the pretrain path in the config file to the corresponding pre-trained weights.
+The pseudo labels will be stored in `dataset/scannetv2/gaussian_process_kl_pseudo_labels`
 
-Train our ISBNet
-
+## Training ISBNet with pseudo labels
+1\) First navigating to ISBNet subfolder:
 ```
-python3 tools/train.py configs/scannetv2/isbnet_scannetv2.yaml --trainall --exp_name default
-```
-
-By default, we set `batch_size=12` on a single V100 GPU.
-
-2\) S3DIS dataset
-
-```
-# Pretrain step
-python3 tools/train.py configs/s3dis/isbnet_backbone_s3dis_area5.yaml --only_backbone  --exp_name default
-
-# Train entire model
-python3 tools/train.py configs/s3dis/isbnet_s3dis_area5.yaml --trainall  --exp_name default
+cd ISBNet/
 ```
 
-3\) STPLS3D dataset
+2\) Pretrain the 3D Unet backbone from scratch
 
 ```
-# Pretrain step
-python3 tools/train.py configs/stpls3d/isbnet_backbone_stpls3d.yaml --only_backbone  --exp_name default
-
-# Train entire model
-python3 tools/train.py configs/stpls3d/isbnet_stpls3d.yaml --trainall  --exp_name default
+python3 tools/train.py configs/scannetv2/boxsup_isbnet_backbone_scannetv2.yaml --only_backbone --exp_name pretrain_backbone
 ```
+
+3\) Train ISBNet
+
+```
+python3 tools/train.py configs/scannetv2/boxsup_isbnet_scannetv2.yaml --trainall --exp_name default
+```
+
+4\) (Optional) Self-training
+
+Generate pointwise deep features from the current best model
+
+```
+python3 tools/export_features.py configs/scannetv2/boxsup_isbnet_scannetv2_export_feats.yaml <checkpoint_file> --save_deepfeatures_path dataset/scannetv2/pretrain_maskfeats
+```
+
+Re-generate the pseudo labels:
+
+```
+cd ./gapro
+python3 gen_ps.py --save_folder dataset/scannetv2/gaussian_process_kl_deep_pseudo_labels --use_deepfeat --deepfeat_folder dataset/scannetv2/pretrain_maskfeats/
+```
+
+Change the `label_type` in config file to the new label name (`gaussian_process_kl_deep_pseudo_labels`) and re-run step #2 and #3
 
 ## Inference
 

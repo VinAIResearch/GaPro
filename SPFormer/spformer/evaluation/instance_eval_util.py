@@ -1,6 +1,7 @@
 import json
-import numpy as np
 import os
+
+import numpy as np
 from plyfile import PlyData
 
 
@@ -17,9 +18,9 @@ def transform_points(matrix, points):
 
 
 def export_ids(filename, ids):
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         for id in ids:
-            f.write('%d\n' % id)
+            f.write("%d\n" % id)
 
 
 def load_ids(filename):
@@ -30,34 +31,34 @@ def load_ids(filename):
 
 def read_mesh_vertices(filename):
     assert os.path.isfile(filename)
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         plydata = PlyData.read(f)
-        num_verts = plydata['vertex'].count
+        num_verts = plydata["vertex"].count
         vertices = np.zeros(shape=[num_verts, 3], dtype=np.float32)
-        vertices[:, 0] = plydata['vertex'].data['x']
-        vertices[:, 1] = plydata['vertex'].data['y']
-        vertices[:, 2] = plydata['vertex'].data['z']
+        vertices[:, 0] = plydata["vertex"].data["x"]
+        vertices[:, 1] = plydata["vertex"].data["y"]
+        vertices[:, 2] = plydata["vertex"].data["z"]
     return vertices
 
 
 # export 3d instance labels for instance evaluation
 def export_instance_ids_for_eval(filename, label_ids, instance_ids):
     assert label_ids.shape[0] == instance_ids.shape[0]
-    output_mask_path_relative = 'pred_mask'
+    output_mask_path_relative = "pred_mask"
     name = os.path.splitext(os.path.basename(filename))[0]
     output_mask_path = os.path.join(os.path.dirname(filename), output_mask_path_relative)
     if not os.path.isdir(output_mask_path):
         os.mkdir(output_mask_path)
     insts = np.unique(instance_ids)
     zero_mask = np.zeros(shape=(instance_ids.shape[0]), dtype=np.int32)
-    with open(filename, 'w') as f:
+    with open(filename, "w") as f:
         for idx, inst_id in enumerate(insts):
             if inst_id == 0:  # 0 -> no instance for this vertex
                 continue
-            output_mask_file = os.path.join(output_mask_path_relative, name + '_' + str(idx) + '.txt')
+            output_mask_file = os.path.join(output_mask_path_relative, name + "_" + str(idx) + ".txt")
             loc = np.where(instance_ids == inst_id)
             label_id = label_ids[loc[0][0]]
-            f.write('%s %d %f\n' % (output_mask_file, label_id, 1.0))
+            f.write("%s %d %f\n" % (output_mask_file, label_id, 1.0))
             # write mask
             mask = np.copy(zero_mask)
             mask[loc[0]] = 1
@@ -125,24 +126,31 @@ def read_instance_prediction_file(filename, pred_path):
     instance_info = {}
     abs_pred_path = os.path.abspath(pred_path)
     for line in lines:
-        parts = line.split(' ')
+        parts = line.split(" ")
         if len(parts) != 3:
-            print('invalid instance prediction file. Expected (per line): \
+            print(
+                "invalid instance prediction file. Expected (per line): \
                 [rel path prediction] [label id prediction] \
-                  [confidence prediction]')
+                  [confidence prediction]"
+            )
         if os.path.isabs(parts[0]):
-            print('invalid instance prediction file. \
-                First entry in line must be a relative path')
+            print(
+                "invalid instance prediction file. \
+                First entry in line must be a relative path"
+            )
         mask_file = os.path.join(os.path.dirname(filename), parts[0])
         mask_file = os.path.abspath(mask_file)
         # check that mask_file lives inside prediction path
         if os.path.commonprefix([mask_file, abs_pred_path]) != abs_pred_path:
-            print(('predicted mask {} in prediction text file {}' + 'points outside of prediction path.').format(
-                mask_file, filename))
+            print(
+                ("predicted mask {} in prediction text file {}" + "points outside of prediction path.").format(
+                    mask_file, filename
+                )
+            )
 
         info = {}
-        info['label_id'] = int(float(parts[1]))
-        info['conf'] = float(parts[2])
+        info["label_id"] = int(float(parts[1]))
+        info["conf"] = float(parts[2])
         instance_info[mask_file] = info
     return instance_info
 

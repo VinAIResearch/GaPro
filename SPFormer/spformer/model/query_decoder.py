@@ -3,7 +3,6 @@ import torch.nn as nn
 
 
 class CrossAttentionLayer(nn.Module):
-
     def __init__(self, d_model=256, nhead=8, dropout=0.0):
         super().__init__()
 
@@ -46,7 +45,6 @@ class CrossAttentionLayer(nn.Module):
 
 
 class SelfAttentionLayer(nn.Module):
-
     def __init__(self, d_model=256, nhead=8, dropout=0.0):
         super().__init__()
         self.attn = nn.MultiheadAttention(
@@ -73,10 +71,9 @@ class SelfAttentionLayer(nn.Module):
 
 
 class FFN(nn.Module):
-
-    def __init__(self, d_model, hidden_dim, dropout=0.0, activation_fn='relu'):
+    def __init__(self, d_model, hidden_dim, dropout=0.0, activation_fn="relu"):
         super().__init__()
-        if activation_fn == 'relu':
+        if activation_fn == "relu":
             self.net = nn.Sequential(
                 nn.Linear(d_model, hidden_dim),
                 nn.ReLU(),
@@ -84,7 +81,7 @@ class FFN(nn.Module):
                 nn.Linear(hidden_dim, d_model),
                 nn.Dropout(dropout),
             )
-        elif activation_fn == 'gelu':
+        elif activation_fn == "gelu":
             self.net = nn.Sequential(
                 nn.Linear(d_model, hidden_dim),
                 nn.GELU(),
@@ -116,7 +113,7 @@ class QueryDecoder(nn.Module):
         nhead=8,
         hidden_dim=1024,
         dropout=0.0,
-        activation_fn='relu',
+        activation_fn="relu",
         iter_pred=False,
         attn_mask=False,
         pe=False,
@@ -148,7 +145,7 @@ class QueryDecoder(nn.Module):
         for i in range(len(batch_offsets) - 1):
             start_id, end_id = batch_offsets[i], batch_offsets[i + 1]
             mask_feat = mask_feats[start_id:end_id]
-            pred_mask = torch.einsum('nd,md->nm', query[i], mask_feat)
+            pred_mask = torch.einsum("nd,md->nm", query[i], mask_feat)
             if self.attn_mask:
                 attn_mask = (pred_mask.sigmoid() < 0.5).bool()
                 attn_mask[torch.where(attn_mask.sum(-1) == attn_mask.shape[-1])] = False
@@ -176,7 +173,7 @@ class QueryDecoder(nn.Module):
                 query = self.self_attn_layers[i](query)
                 query = self.ffn_layers[i](query)
         pred_labels, pred_scores, pred_masks, _ = self.prediction_head(query, mask_feats, batch_offsets)
-        return {'labels': pred_labels, 'masks': pred_masks, 'scores': pred_scores}
+        return {"labels": pred_labels, "masks": pred_masks, "scores": pred_scores}
 
     def forward_iter_pred(self, x, batch_offsets):
         """
@@ -189,7 +186,7 @@ class QueryDecoder(nn.Module):
         mask_feats = self.x_mask(x)
         B = len(batch_offsets) - 1
         query = self.query.weight.unsqueeze(0).repeat(B, 1, 1)  # (b, n, d_model)
-        if getattr(self, 'pe', None):
+        if getattr(self, "pe", None):
             pe = self.pe.weight.unsqueeze(0).repeat(B, 1, 1)
         else:
             pe = None
@@ -207,21 +204,17 @@ class QueryDecoder(nn.Module):
             prediction_scores.append(pred_scores)
             prediction_masks.append(pred_masks)
         return {
-            'labels':
-            pred_labels,
-            'masks':
-            pred_masks,
-            'scores':
-            pred_scores,
-            'aux_outputs': [{
-                'labels': a,
-                'masks': b,
-                'scores': c
-            } for a, b, c in zip(
-                prediction_labels[:-1],
-                prediction_masks[:-1],
-                prediction_scores[:-1],
-            )],
+            "labels": pred_labels,
+            "masks": pred_masks,
+            "scores": pred_scores,
+            "aux_outputs": [
+                {"labels": a, "masks": b, "scores": c}
+                for a, b, c in zip(
+                    prediction_labels[:-1],
+                    prediction_masks[:-1],
+                    prediction_scores[:-1],
+                )
+            ],
         }
 
     def forward(self, x, batch_offsets):

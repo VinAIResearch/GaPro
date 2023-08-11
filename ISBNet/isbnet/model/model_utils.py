@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 import torch_scatter
+
 from ..ops import ballquery_batchflat
 
 
@@ -740,5 +740,3 @@ def get_spp_gt(
 
 def is_within_bb_torch(points, bb_min, bb_max):
     return torch.all(points >= bb_min, dim=-1) & torch.all(points <= bb_max, dim=-1)
-
-

@@ -3,18 +3,19 @@ from torch.utils.data.distributed import DistributedSampler
 
 from .scannetv2 import ScanNetDataset
 
-__all__ = ['ScanNetDataset', 'build_dataset', 'build_dataloader']
+
+__all__ = ["ScanNetDataset", "build_dataset", "build_dataloader"]
 
 
 def build_dataset(data_cfg, logger):
-    assert 'type' in data_cfg
+    assert "type" in data_cfg
     _data_cfg = data_cfg.copy()
-    _data_cfg['logger'] = logger
-    data_type = _data_cfg.pop('type')
-    if data_type == 'scannetv2':
+    _data_cfg["logger"] = logger
+    data_type = _data_cfg.pop("type")
+    if data_type == "scannetv2":
         return ScanNetDataset(**_data_cfg)
     else:
-        raise ValueError(f'Unknown {data_type}')
+        raise ValueError(f"Unknown {data_type}")
 
 
 def build_dataloader(dataset, batch_size=1, num_workers=1, training=True, dist=False, persistent_workers=True):
@@ -32,7 +33,8 @@ def build_dataloader(dataset, batch_size=1, num_workers=1, training=True, dist=F
             sampler=sampler,
             drop_last=True,
             pin_memory=True,
-            persistent_workers=persistent_workers)
+            persistent_workers=persistent_workers,
+        )
     else:
         assert batch_size == 1
         return DataLoader(
@@ -44,4 +46,5 @@ def build_dataloader(dataset, batch_size=1, num_workers=1, training=True, dist=F
             sampler=sampler,
             drop_last=False,
             pin_memory=True,
-            persistent_workers=persistent_workers)
+            persistent_workers=persistent_workers,
+        )

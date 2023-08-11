@@ -1,7 +1,7 @@
+import glob
+
 import numpy as np
 import torch
-
-import glob
 
 
 files = sorted(glob.glob("dataset/s3dis/learned_superpoint_graph_segmentations/*.npy"))

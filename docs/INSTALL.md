@@ -10,8 +10,8 @@ The following installation guide supposes ``python=3.7``, ``pytorch=1.12.1``, ``
 
 Create a conda virtual environment and activate it.
 ```
-conda create -n isbnet python=3.7
-conda activate isbnet
+conda create -n gapro python=3.7
+conda activate gapro
 ```
 
 2\) Install the dependencies
@@ -45,17 +45,23 @@ make && make install
 sudo apt-get install libsparsehash-dev
 ```
 
-5\) Setup pointnet ops
+5\) Setup [ISBNet](https://github.com/VinAIResearch/ISBNet)
+
 ```
-cd ISBNet/isbnet/pointnet2
+cd ./ISBNet/isbnet/pointnet2
 python3 setup.py bdist_wheel
 cd ./dist
 pip3 install <.whl>
-```
 
-6\) Setup
-
-```
-cd ISBNet
+cd ../../../
 python3 setup.py build_ext develop
+```
+
+6\) Setup [SPFormer](https://github.com/sunjiahao1999/SPFormer)
+
+```
+cd ./SPformer/spformer/lib/
+python setup.py develop
+cd ../../
+python setup.py develop
 ```

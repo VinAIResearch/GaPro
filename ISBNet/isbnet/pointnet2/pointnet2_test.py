@@ -2,13 +2,13 @@
 
 """ Testing customized ops. """
 
+import os
+import sys
+
 import numpy as np
+import pointnet2_utils
 import torch
 from torch.autograd import gradcheck
-
-import os
-import pointnet2_utils
-import sys
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

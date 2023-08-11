@@ -1,8 +1,9 @@
+import multiprocessing as mp
+import warnings
+
 import numpy as np
 from scipy import stats
 
-import multiprocessing as mp
-import warnings
 from ..util import rle_decode
 
 

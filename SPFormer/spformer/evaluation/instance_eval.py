@@ -1,16 +1,17 @@
 # Adapted from https://github.com/ScanNet/ScanNet/blob/master/BenchmarkScripts/3d_evaluation/evaluate_semantic_instance.py  # noqa E501
 # Modified by Thang Vu
 
-import numpy as np
-
 import multiprocessing as mp
 from copy import deepcopy
-from spformer.utils import cuda_cast, rle_encode, rle_encode_gpu_batch, rle_decode
+
+import numpy as np
+from spformer.utils import cuda_cast, rle_decode, rle_encode, rle_encode_gpu_batch
+
 from .instance_eval_util import get_instances
 
 
 class ScanNetEval(object):
-    def __init__(self, class_labels, iou_type=None, use_label=True, dataset_name='scannetv2'):
+    def __init__(self, class_labels, iou_type=None, use_label=True, dataset_name="scannetv2"):
         self.dataset_name = dataset_name
 
         self.valid_class_labels = class_labels
@@ -24,11 +25,11 @@ class ScanNetEval(object):
         self.ious = np.append(np.arange(0.5, 0.95, 0.05), 0.25)
 
         # NOTE different for stpls3d
-        if dataset_name == 'stpls3d':
+        if dataset_name == "stpls3d":
             self.min_region_sizes = np.array([10])
         else:
             self.min_region_sizes = np.array([100])
-            
+
         self.distance_threshes = np.array([float("inf")])
         self.distance_confs = np.array([-float("inf")])
 
@@ -252,10 +253,10 @@ class ScanNetEval(object):
         # else:
         #     gts_sem = gts_sem + 1
 
-        if self.dataset_name == 'scannetv2':
+        if self.dataset_name == "scannetv2":
             gts_sem = gts_sem + 1
-            gts_sem[gts_sem==19] = 0
-        elif self.dataset_name == 'stpls3d':
+            gts_sem[gts_sem == 19] = 0
+        elif self.dataset_name == "stpls3d":
             gts_sem = gts_sem - 1 + 1
         else:
             gts_sem = gts_sem + 1
@@ -346,10 +347,10 @@ class ScanNetEval(object):
     def assign_boxes_for_scan(self, preds, coords, gts_sem, gts_ins):
         """get gt instances, only consider the valid class labels even in class
         agnostic setting."""
-        if self.dataset_name == 'scannetv2':
+        if self.dataset_name == "scannetv2":
             gts_sem = gts_sem + 1
-            gts_sem[gts_sem==19] = 0
-        elif self.dataset_name == 'stpls3d':
+            gts_sem[gts_sem == 19] = 0
+        elif self.dataset_name == "stpls3d":
             gts_sem = gts_sem - 1 + 1
         else:
             gts_sem = gts_sem + 1
@@ -396,7 +397,7 @@ class ScanNetEval(object):
             else:
                 label_name = self.eval_class_labels[0]  # class agnostic label
             conf = pred["conf"]
-            pred_mask = pred['pred_mask']
+            pred_mask = pred["pred_mask"]
             # pred_mask can be np.array or rle dict
             if isinstance(pred_mask, dict):
                 pred_mask = rle_decode(pred_mask)
@@ -412,10 +413,9 @@ class ScanNetEval(object):
             pred_instance["filename"] = "{}_{}".format(pred["scan_id"], num_pred_instances)  # dummy
             pred_instance["pred_id"] = num_pred_instances
             pred_instance["label_id"] = label_id if self.use_label else None
-            pred_instance['vert_count'] = num
+            pred_instance["vert_count"] = num
             pred_instance["confidence"] = conf
-            pred_instance['void_intersection'] = np.count_nonzero(
-                np.logical_and(bool_void, pred_mask))
+            pred_instance["void_intersection"] = np.count_nonzero(np.logical_and(bool_void, pred_mask))
 
             assert "box" in pred.keys()
 
@@ -478,9 +478,9 @@ class ScanNetEval(object):
         # for (li, label_name) in enumerate(self.eval_class_labels):
 
         # list_eval_class_labels = tuple(list(self.eval_class_labels))
-        if len(self.eval_class_labels) == 18: # SCANNET
+        if len(self.eval_class_labels) == 18:  # SCANNET
             sorted_eval_class_labels = []
-            for idx in [14,2,16,4,13,1,3,17,5,15,8,12,0,11,7,6,10,9]:
+            for idx in [14, 2, 16, 4, 13, 1, 3, 17, 5, 15, 8, 12, 0, 11, 7, 6, 10, 9]:
                 sorted_eval_class_labels.append(self.eval_class_labels[idx])
         else:
             sorted_eval_class_labels = self.eval_class_labels

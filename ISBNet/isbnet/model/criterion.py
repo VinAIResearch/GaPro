@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from isbnet.model.matcher import HungarianMatcher
-from .model_utils import batch_giou_corres, giou_aabb, is_within_bb_torch
 import torch_scatter
+from isbnet.model.matcher import HungarianMatcher
+
+from .model_utils import batch_giou_corres, giou_aabb, is_within_bb_torch
 
 
 @torch.no_grad()
@@ -130,7 +130,7 @@ class Criterion(nn.Module):
             "box_loss": 0.5,
             "giou_loss": 0.5,
             "levelset_loss": 0.5,
-            "kl_loss": 0.1
+            "kl_loss": 0.1,
         }
 
     def cal_point_wise_loss(
@@ -189,32 +189,44 @@ class Criterion(nn.Module):
         losses["pw_conf_loss"] = conf_loss
 
         return losses
-    
+
     def levelset_loss(self, levelset_coords_, levelset_feats_, mask_logit_pred, box_label):
         num_gts = len(box_label)
 
-        is_within_conds = is_within_bb_torch(levelset_coords_[None, :, :], box_label[:, None, :3] - 0.005, box_label[:, None, 3:] + 0.005) # N_box, N_points
-            
-        min_points_conds = (torch.sum(is_within_conds, dim=1) > 0)
+        is_within_conds = is_within_bb_torch(
+            levelset_coords_[None, :, :], box_label[:, None, :3] - 0.005, box_label[:, None, 3:] + 0.005
+        )  # N_box, N_points
 
-        is_within_conds_ = is_within_conds[min_points_conds] # N_box_, N_points
+        min_points_conds = torch.sum(is_within_conds, dim=1) > 0
+
+        is_within_conds_ = is_within_conds[min_points_conds]  # N_box_, N_points
         mask_logit_pred_ = mask_logit_pred[min_points_conds]
 
         box_inds, point_inds = torch.nonzero((is_within_conds_), as_tuple=True)
 
-
-        mask_logit_pred_sm_insts = torch.sigmoid(mask_logit_pred_[box_inds, point_inds]) # M
-        levelset_feats_insts = levelset_feats_[point_inds, :] # M, f
+        mask_logit_pred_sm_insts = torch.sigmoid(mask_logit_pred_[box_inds, point_inds])  # M
+        levelset_feats_insts = levelset_feats_[point_inds, :]  # M, f
 
         _, box_inds_norm = torch.unique(box_inds, return_inverse=True)
 
-        ave_similarity = torch_scatter.scatter((levelset_feats_insts * mask_logit_pred_sm_insts[:, None]).float(), index=box_inds_norm, dim=0, reduce="sum") / torch_scatter.scatter(mask_logit_pred_sm_insts.float(), index=box_inds_norm, reduce="sum").clamp(min=0.00001)[:, None]
+        ave_similarity = (
+            torch_scatter.scatter(
+                (levelset_feats_insts * mask_logit_pred_sm_insts[:, None]).float(),
+                index=box_inds_norm,
+                dim=0,
+                reduce="sum",
+            )
+            / torch_scatter.scatter(mask_logit_pred_sm_insts.float(), index=box_inds_norm, reduce="sum").clamp(
+                min=0.00001
+            )[:, None]
+        )
 
         region_level = levelset_feats_insts - ave_similarity[box_inds_norm, :]
 
         region_level_loss = region_level * region_level * mask_logit_pred_sm_insts[:, None]
-        region_level_loss = torch_scatter.scatter(region_level_loss.sum(dim=1).float(), index=box_inds_norm, reduce="mean") # n_box
-
+        region_level_loss = torch_scatter.scatter(
+            region_level_loss.sum(dim=1).float(), index=box_inds_norm, reduce="mean"
+        )  # n_box
 
         region_level_loss = region_level_loss.sum() / (num_gts + 1e-4)
 
@@ -243,7 +255,7 @@ class Criterion(nn.Module):
 
         num_gt = 0
         for b in range(batch_size):
-            b_s, b_e = batch_offset[b], batch_offset[b+1]
+            b_s, b_e = batch_offset[b], batch_offset[b + 1]
             mask_logit_b = mask_logits_list[b]
             cls_logit_b = cls_logits[b]  # n_queries x n_classes
             conf_logits_b = conf_logits[b]  # n_queries
@@ -312,8 +324,6 @@ class Criterion(nn.Module):
 
             region_level_loss = self.levelset_loss(levelset_coords_, levelset_feats_, mask_logit_pred, box_label)
             loss_dict["levelset_loss"] = loss_dict["levelset_loss"] + region_level_loss
-            
-
 
         for k in loss_dict.keys():
             loss_dict[k] = loss_dict[k] / batch_size
@@ -368,7 +378,6 @@ class Criterion(nn.Module):
         for k in self.loss_weight:
             loss_dict[k] = torch.tensor(0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float)
 
-
         """ Main loss """
         cls_logits = model_outputs["cls_logits"]
         mask_logits = model_outputs["mask_logits"]
@@ -380,7 +389,6 @@ class Criterion(nn.Module):
         dc_mu_labels = model_outputs["dc_mu_labels"]
         dc_var_labels = model_outputs["dc_var_labels"]
         dc_batch_offsets = model_outputs["dc_batch_offsets"]
-
 
         dc_rgb_feats = model_outputs["dc_rgb_feats"]
         dc_coords_float = model_outputs["dc_coords_float"]
@@ -431,25 +439,27 @@ class Criterion(nn.Module):
 
         loss_dict["kl_loss"] = torch.tensor(0.0, requires_grad=True, device=instance_labels.device, dtype=torch.float)
 
-        epsilon = 1e-4  
+        epsilon = 1e-4
         mask_kl_varzero = (mu_labels != -100) & (var_labels != -100) & (var_labels <= epsilon)
         mask_kl_var = (mu_labels != -100) & (var_labels != -100) & (var_labels > epsilon)
 
-
         if mask_kl_varzero.sum() > 0:
-            loss_kl_varzero = (torch.exp(logvar_pred[mask_kl_varzero]) -1)**2 + (mu_pred[mask_kl_varzero] - mu_labels[mask_kl_varzero])**2
+            loss_kl_varzero = (torch.exp(logvar_pred[mask_kl_varzero]) - 1) ** 2 + (
+                mu_pred[mask_kl_varzero] - mu_labels[mask_kl_varzero]
+            ) ** 2
             loss_kl_varzero = loss_kl_varzero.sum() / (mask_kl_varzero.sum() + 1e-4)
 
-            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_varzero * self.loss_weight["kl_loss"] 
+            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_varzero * self.loss_weight["kl_loss"]
 
         if mask_kl_var.sum() > 0:
-            loss_kl_var = (logvar_pred[mask_kl_var] - torch.log(var_labels[mask_kl_var])) + \
-                        ((mu_pred[mask_kl_var] - mu_labels[mask_kl_var])**2 + var_labels[mask_kl_var]**2)  * (torch.exp(-2*logvar_pred[mask_kl_var])) \
-                        - 0.5
+            loss_kl_var = (
+                (logvar_pred[mask_kl_var] - torch.log(var_labels[mask_kl_var]))
+                + ((mu_pred[mask_kl_var] - mu_labels[mask_kl_var]) ** 2 + var_labels[mask_kl_var] ** 2)
+                * (torch.exp(-2 * logvar_pred[mask_kl_var]))
+                - 0.5
+            )
             loss_kl_var = loss_kl_var.sum() / (mask_kl_var.sum() + 1e-4)
 
-            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_var * self.loss_weight["kl_loss"] 
-
-
+            loss_dict["kl_loss"] = loss_dict["kl_loss"] + loss_kl_var * self.loss_weight["kl_loss"]
 
         return loss_dict

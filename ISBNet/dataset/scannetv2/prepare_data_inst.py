@@ -1,17 +1,17 @@
 """Modified from SparseConvNet data preparation: https://github.com/facebookres
 earch/SparseConvNet/blob/master/examples/ScanNet/prepare_data.py."""
 
+import argparse
+import glob
+import json
+import multiprocessing as mp
+
 import numpy as np
 import plyfile
 import scannet_util
 
 # import segmentator
 import torch
-
-import argparse
-import glob
-import json
-import multiprocessing as mp
 
 
 # Map relevant classes to {0,1,...,19}, and ignored classes to -100

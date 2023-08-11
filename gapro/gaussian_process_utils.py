@@ -1,19 +1,12 @@
-from gpytorch.models import AbstractVariationalGP
-from gpytorch.variational import CholeskyVariationalDistribution
-from gpytorch.variational import VariationalStrategy
-
 import gpytorch
-from gpytorch.variational import CholeskyVariationalDistribution
-from gpytorch.variational import VariationalStrategy
-from gpytorch.mlls.variational_elbo import VariationalELBO
-
 import torch
 import torch.nn as nn
-from torch.utils.data import TensorDataset
-from torch.utils.data import DataLoader
-
-
 import torch_scatter
+from gpytorch.mlls.variational_elbo import VariationalELBO
+from gpytorch.models import AbstractVariationalGP
+from gpytorch.variational import CholeskyVariationalDistribution, VariationalStrategy
+from torch.utils.data import DataLoader, TensorDataset
+
 
 class GPClassificationModel(AbstractVariationalGP):
     def __init__(self, train_x):
@@ -24,7 +17,6 @@ class GPClassificationModel(AbstractVariationalGP):
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
         # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.MaternKernel())
-        
 
     def forward(self, x):
         mean_x = self.mean_module(x)
@@ -32,37 +24,38 @@ class GPClassificationModel(AbstractVariationalGP):
         latent_pred = gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
         return latent_pred
 
-def fit_gp(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, training_iter=50, npoint_nearest=800, spp_pool=True):
-    
-    # try:
-        # b1_feats, b2_feat, intersect_feat, b1_spp, b2_spp, intersect_spp, training_iter=50):
-    device = feats.device
 
+def fit_gp(
+    coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, training_iter=50, npoint_nearest=800, spp_pool=True
+):
+
+    # try:
+    # b1_feats, b2_feat, intersect_feat, b1_spp, b2_spp, intersect_spp, training_iter=50):
+    device = feats.device
 
     intersect_coords = coords_float[intersect_inds]
     intersect_feats = feats[intersect_inds]
     intersect_spp = spp[intersect_inds]
     intersect_centroid = intersect_coords.mean(0)
-            
+
     b1_coords = coords_float[b1_inds]
     b1_feats = feats[b1_inds]
     b1_spp = spp[b1_inds]
-    
+
     b2_coords = coords_float[b2_inds]
     b2_feats = feats[b2_inds]
     b2_spp = spp[b2_inds]
 
     if not spp_pool:
         if len(b1_inds) > npoint_nearest:
-            dist_to_centroid = ((b1_coords - intersect_centroid[None, :])**2).sum(1)
+            dist_to_centroid = ((b1_coords - intersect_centroid[None, :]) ** 2).sum(1)
             topk_inds = torch.topk(dist_to_centroid, k=npoint_nearest, largest=False)[1]
 
             b1_feats = b1_feats[topk_inds]
             b1_spp = b1_spp[topk_inds]
 
-        
         if len(b2_inds) > npoint_nearest:
-            dist_to_centroid = ((b2_coords - intersect_centroid[None, :])**2).sum(1)
+            dist_to_centroid = ((b2_coords - intersect_centroid[None, :]) ** 2).sum(1)
             topk_inds = torch.topk(dist_to_centroid, k=npoint_nearest, largest=False)[1]
 
             b2_feats = b2_feats[topk_inds]
@@ -77,16 +70,17 @@ def fit_gp(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, training_
 
         # _, intersect_spp = torch.unique(intersect_spp, return_inverse=True)
         # intersect_feats = torch_scatter.scatter(intersect_feats, intersect_spp[:, None].expand(-1, intersect_feats.shape[1]), dim=0, reduce="mean")
-    
+
     # scaler = torch.cuda.amp.GradScaler(enabled=True)
 
     train_x = torch.cat([b1_feats, b2_feats], dim=0)
-    train_y = torch.cat([-1 * torch.ones(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0)
+    train_y = torch.cat(
+        [-1 * torch.ones(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0
+    )
 
     # print(train_x.shape)
     model = GPClassificationModel(train_x).to(device)
     likelihood = gpytorch.likelihoods.BernoulliLikelihood().to(device)
-
 
     # Find optimal model hyperparameters
     model.train()
@@ -103,7 +97,6 @@ def fit_gp(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, training_
         output = model(train_x)
         loss = -mll(output, train_y)
 
-        
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -120,37 +113,45 @@ def fit_gp(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, training_
 
         pred_probs_new = torch.where(pred_labels == 1, pred_probs, 1 - pred_probs)
 
-
     return pred_probs, pred_probs_new, pred_labels, pred_variance
 
-def fit_gp_ensemble(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, channel_dims, training_iter=50, npoint_nearest=800, spp_pool=True):
-    device = feats.device
 
+def fit_gp_ensemble(
+    coords_float,
+    feats,
+    spp,
+    b1_inds,
+    b2_inds,
+    intersect_inds,
+    channel_dims,
+    training_iter=50,
+    npoint_nearest=800,
+    spp_pool=True,
+):
+    device = feats.device
 
     intersect_coords = coords_float[intersect_inds]
     intersect_feats = feats[intersect_inds]
     intersect_spp = spp[intersect_inds]
     intersect_centroid = intersect_coords.mean(0)
 
-            
     b1_coords = coords_float[b1_inds]
     b1_feats = feats[b1_inds]
     b1_spp = spp[b1_inds]
-    
+
     b2_coords = coords_float[b2_inds]
     b2_feats = feats[b2_inds]
     b2_spp = spp[b2_inds]
 
     if len(b1_inds) > npoint_nearest:
-        dist_to_centroid = ((b1_coords - intersect_centroid[None, :])**2).sum(1)
+        dist_to_centroid = ((b1_coords - intersect_centroid[None, :]) ** 2).sum(1)
         topk_inds = torch.topk(dist_to_centroid, k=npoint_nearest, largest=False)[1]
 
         b1_feats = b1_feats[topk_inds]
         b1_spp = b1_spp[topk_inds]
 
-    
     if len(b2_inds) > npoint_nearest:
-        dist_to_centroid = ((b2_coords - intersect_centroid[None, :])**2).sum(1)
+        dist_to_centroid = ((b2_coords - intersect_centroid[None, :]) ** 2).sum(1)
         topk_inds = torch.topk(dist_to_centroid, k=npoint_nearest, largest=False)[1]
 
         b2_feats = b2_feats[topk_inds]
@@ -164,26 +165,29 @@ def fit_gp_ensemble(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, 
         b2_feats = torch_scatter.scatter(b2_feats, b2_spp[:, None].expand(-1, b2_feats.shape[1]), dim=0, reduce="mean")
 
         _, intersect_spp = torch.unique(intersect_spp, return_inverse=True)
-        intersect_feats = torch_scatter.scatter(intersect_feats, intersect_spp[:, None].expand(-1, intersect_feats.shape[1]), dim=0, reduce="mean")
-    
+        intersect_feats = torch_scatter.scatter(
+            intersect_feats, intersect_spp[:, None].expand(-1, intersect_feats.shape[1]), dim=0, reduce="mean"
+        )
+
     # scaler = torch.cuda.amp.GradScaler(enabled=True)
     # print(intersect_feats.shape, b1_feats.shape)
     pred_probs_2labels = torch.zeros((intersect_feats.shape[0], 2), dtype=torch.float, device=device)
     pred_variance = torch.zeros((intersect_feats.shape[0]), dtype=torch.float, device=device)
 
     for i in range(len(channel_dims) - 1):
-        c_start, c_end = channel_dims[i], channel_dims[i+1]
+        c_start, c_end = channel_dims[i], channel_dims[i + 1]
 
         b1_feats_ = b1_feats[:, c_start:c_end]
         b2_feats_ = b2_feats[:, c_start:c_end]
         intersect_feats_ = intersect_feats[:, c_start:c_end]
 
         train_x = torch.cat([b1_feats_, b2_feats_], dim=0)
-        train_y = torch.cat([-1 * torch.ones(b1_feats_.shape[0], device=device), torch.ones(b2_feats_.shape[0], device=device)], dim=0)
+        train_y = torch.cat(
+            [-1 * torch.ones(b1_feats_.shape[0], device=device), torch.ones(b2_feats_.shape[0], device=device)], dim=0
+        )
 
         model = GPClassificationModel(train_x).to(device)
         likelihood = gpytorch.likelihoods.BernoulliLikelihood().to(device)
-
 
         # Find optimal model hyperparameters
         model.train()
@@ -203,7 +207,6 @@ def fit_gp_ensemble(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, 
             output = model(train_x)
             loss = -mll(output, train_y)
 
-            
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -213,7 +216,7 @@ def fit_gp_ensemble(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, 
 
             # if i % 5 == 0:
             #     print('Iter %d/%d - Loss: %.3f' % (i + 1, training_iter, loss.item()))
-                
+
             # optimizer.step()
 
         # Go into eval mode
@@ -231,8 +234,8 @@ def fit_gp_ensemble(coords_float, feats, spp, b1_inds, b2_inds, intersect_inds, 
 
             # pred_probs_2labels[pred_labels_ == 0, 0]
             # print(pred_probs_2labels.shape, pred_labels_.shape, intersect_feats_.shape)
-            pred_probs_2labels[:, 1] += torch.where(pred_labels_==1, pred_probs_, 1-pred_probs_)
-            pred_probs_2labels[:, 0] += torch.where(pred_labels_==1, 1-pred_probs_, pred_probs_)
+            pred_probs_2labels[:, 1] += torch.where(pred_labels_ == 1, pred_probs_, 1 - pred_probs_)
+            pred_probs_2labels[:, 0] += torch.where(pred_labels_ == 1, 1 - pred_probs_, pred_probs_)
 
             pred_variance += pred_variance_
 
@@ -253,18 +256,16 @@ class SimpleModel(nn.Module):
         super(SimpleModel, self).__init__()
         n_hidden1 = 128
         n_hidden2 = 128
-        self.layer_1 = nn.Linear(32, n_hidden1) 
+        self.layer_1 = nn.Linear(32, n_hidden1)
         self.layer_2 = nn.Linear(n_hidden1, n_hidden2)
-        self.layer_out = nn.Linear(n_hidden2, 1) 
-        
-        
+        self.layer_out = nn.Linear(n_hidden2, 1)
+
         self.relu = nn.ReLU()
-        self.sigmoid =  nn.Sigmoid()
+        self.sigmoid = nn.Sigmoid()
         self.dropout = nn.Dropout(p=0.1)
         self.batchnorm1 = nn.BatchNorm1d(n_hidden1)
         self.batchnorm2 = nn.BatchNorm1d(n_hidden2)
-        
-        
+
     def forward(self, inputs):
         x = self.relu(self.layer_1(inputs))
         x = self.batchnorm1(x)
@@ -272,40 +273,36 @@ class SimpleModel(nn.Module):
         x = self.batchnorm2(x)
         x = self.dropout(x)
         x = self.layer_out(x).squeeze(-1)
-        
+
         return x
-    
+
 
 class RegressionModel(nn.Module):
     def __init__(self):
         super(RegressionModel, self).__init__()
-        self.layer_1 = nn.Linear(32, 1) 
-        
-        
+        self.layer_1 = nn.Linear(32, 1)
+
     def forward(self, inputs):
         x = self.layer_1(inputs)
         return x
-    
+
 
 # def fit_simple_model(train_x, train_y, test_x, device, training_iter=50):
 def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_iter=50):
     device = feats.device
-
 
     # intersect_coords = coords_float[intersect_inds]
     intersect_feats = feats[intersect_inds]
     intersect_spp = spp[intersect_inds]
     # intersect_centroid = intersect_coords.mean(0)
 
-            
     # b1_coords = coords_float[b1_inds]
     b1_feats = feats[b1_inds]
     b1_spp = spp[b1_inds]
-    
+
     # b2_coords = coords_float[b2_inds]
     b2_feats = feats[b2_inds]
     b2_spp = spp[b2_inds]
-
 
     # _, b1_spp = torch.unique(b1_spp, return_inverse=True)
     # b1_feats = torch_scatter.scatter(b1_feats, b1_spp[:, None].expand(-1, b1_feats.shape[1]), dim=0, reduce="mean")
@@ -315,19 +312,21 @@ def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_
 
     # _, intersect_spp = torch.unique(intersect_spp, return_inverse=True)
     # intersect_feats = torch_scatter.scatter(intersect_feats, intersect_spp[:, None].expand(-1, intersect_feats.shape[1]), dim=0, reduce="mean")
-    
+
     train_x = torch.cat([b1_feats, b2_feats], dim=0)
-    train_y = torch.cat([torch.zeros(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0).float()
+    train_y = torch.cat(
+        [torch.zeros(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0
+    ).float()
 
     # train_y = torch.where(train_y == -1, 0, 1).float()
-    #Define a batch size , 
+    # Define a batch size ,
     # bs = min(32, train_x.shape[0])
     bs = min(256, train_x.shape[0])
-    #Both x_train and y_train can be combined in a single TensorDataset, which will be easier to iterate over and slice
+    # Both x_train and y_train can be combined in a single TensorDataset, which will be easier to iterate over and slice
     # y_tensor = y_tensor.unsqueeze(1)
     train_ds = TensorDataset(train_x, train_y)
-    #Pytorch’s DataLoader is responsible for managing batches. 
-    #You can create a DataLoader from any Dataset. DataLoader makes it easier to iterate over batches
+    # Pytorch’s DataLoader is responsible for managing batches.
+    # You can create a DataLoader from any Dataset. DataLoader makes it easier to iterate over batches
     train_dl = DataLoader(train_ds, batch_size=bs, shuffle=True, drop_last=False)
 
     model = RegressionModel().to(device)
@@ -337,17 +336,16 @@ def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.1)
     loss_func = torch.nn.BCEWithLogitsLoss()
 
-
     scaler = torch.cuda.amp.GradScaler(enabled=True)
 
     for epoch in range(training_iter):
-        #Within each epoch run the subsets of data = batch sizes.
+        # Within each epoch run the subsets of data = batch sizes.
         loss_arr = []
         for xb, yb in train_dl:
 
             # breakpoint()
             with torch.cuda.amp.autocast(enabled=True):
-                y_pred = model(xb).squeeze(-1)            # Forward Propagation
+                y_pred = model(xb).squeeze(-1)  # Forward Propagation
                 loss = loss_func(y_pred, yb)  # Loss Computation
 
             optimizer.zero_grad()
@@ -355,9 +353,9 @@ def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_
             scaler.step(optimizer)
             scaler.update()
 
-            # optimizer.zero_grad()         # Clearing all previous gradients, setting to zero 
+            # optimizer.zero_grad()         # Clearing all previous gradients, setting to zero
             # loss.backward()               # Back Propagation
-            # optimizer.step()              # Updating the parameters 
+            # optimizer.step()              # Updating the parameters
             loss_arr.append(loss.detach())
 
         mean_loss = torch.mean(torch.tensor(loss_arr))
@@ -384,25 +382,25 @@ def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_
 def fit_gp_spp(coords_float_spp, feats_spp, b1_inds, b2_inds, intersect_inds, training_iter=50):
     device = feats_spp.device
 
-
     # intersect_coords = coords_float_spp[intersect_inds]
     intersect_feats = feats_spp[intersect_inds]
     # intersect_centroid = intersect_coords.mean(0)
-            
+
     # b1_coords = coords_float_spp[b1_inds]
     b1_feats = feats_spp[b1_inds]
-    
+
     # b2_coords = coords_float_spp[b2_inds]
     b2_feats = feats_spp[b2_inds]
 
     train_x = torch.cat([b1_feats, b2_feats], dim=0)
-    train_y = torch.cat([-1 * torch.ones(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0)
+    train_y = torch.cat(
+        [-1 * torch.ones(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0
+    )
     # train_y = torch.cat([torch.zeros(b1_feats.shape[0], device=device), torch.ones(b2_feats.shape[0], device=device)], dim=0)
 
     # print(train_x.shape)
     model = GPClassificationModel(train_x).to(device)
     likelihood = gpytorch.likelihoods.BernoulliLikelihood().to(device)
-
 
     # Find optimal model hyperparameters
     model.train()

@@ -2,19 +2,18 @@ import functools
 
 
 def cuda_cast(func):
-
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         new_args = []
         for x in args:
-            if hasattr(x, 'cuda'):
+            if hasattr(x, "cuda"):
                 x = x.cuda()
             new_args.append(x)
         new_kwargs = {}
         for k, v in kwargs.items():
-            if hasattr(v, 'cuda'):
+            if hasattr(v, "cuda"):
                 v = v.cuda()
-            elif isinstance(v, list) and hasattr(v[0], 'cuda'):
+            elif isinstance(v, list) and hasattr(v[0], "cuda"):
                 v = [x.cuda() for x in v]
             new_kwargs[k] = v
         return func(*new_args, **new_kwargs)

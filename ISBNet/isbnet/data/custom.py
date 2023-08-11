@@ -1,12 +1,13 @@
+import math
+import os.path as osp
+from glob import glob
+
 import numpy as np
 import scipy.interpolate
 import scipy.ndimage
 import torch
 from torch.utils.data import Dataset
 
-import math
-import os.path as osp
-from glob import glob
 from ..ops import voxelization_idx
 
 
@@ -119,7 +120,9 @@ class CustomDataset(Dataset):
             j += 1
         return instance_label
 
-    def transform_train(self, xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp, aug_prob=1.0):
+    def transform_train(
+        self, xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp, aug_prob=1.0
+    ):
         xyz_middle = self.dataAugment(xyz, True, True, True, aug_prob)
         xyz = xyz_middle * self.voxel_cfg.scale
 
@@ -143,7 +146,6 @@ class CustomDataset(Dataset):
 
         semantic_label = semantic_label[valid_idxs]
         instance_label = self.getCroppedInstLabel(instance_label, valid_idxs)
-
 
         prob_label = prob_label[valid_idxs]
         mu_label = mu_label[valid_idxs]
@@ -171,7 +173,6 @@ class CustomDataset(Dataset):
         #     return self.__getitem__(0)
         # xyz, rgb, semantic_label, instance_label, spp = self.load(filename)
         xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp = self.load(filename)
-
 
         data = (
             self.transform_train(xyz, rgb, semantic_label, instance_label, prob_label, mu_label, var_label, spp)
@@ -307,7 +308,7 @@ class CustomDataset(Dataset):
             "instance_labels": instance_labels,
             "prob_labels": prob_labels,
             "mu_labels": mu_labels,
-            'var_labels': var_labels,
+            "var_labels": var_labels,
             "spps": spps,
             "instance_batch_offsets": instance_batch_offsets,
             "spatial_shape": spatial_shape,

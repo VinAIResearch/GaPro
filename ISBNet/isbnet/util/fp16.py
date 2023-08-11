@@ -1,11 +1,11 @@
 # Simplfied from mmcv.
 # Directly use torch.cuda.amp.autocast for mix-precision and support sparse tensor
-import spconv.pytorch as spconv
-import torch
-
 import functools
 from collections import abc
 from inspect import getfullargspec
+
+import spconv.pytorch as spconv
+import torch
 
 
 def cast_tensor_type(inputs, src_type, dst_type):

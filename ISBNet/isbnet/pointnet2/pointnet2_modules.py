@@ -6,15 +6,15 @@ Extended with the following:
 1. Uniform sampling in each local region (sample_uniformly)
 2. Return sampled points indices to support votenet.
 """
+import os
+import sys
+from typing import List, Tuple
+
+import pointnet2_utils
+import pytorch_utils as pt_utils
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import os
-import pointnet2_utils
-import pytorch_utils as pt_utils
-import sys
-from typing import List, Tuple
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

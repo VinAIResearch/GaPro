@@ -1,6 +1,7 @@
+import logging
+
 from tensorboardX import SummaryWriter as _SummaryWriter
 
-import logging
 from .dist import is_main_process, master_only
 
 

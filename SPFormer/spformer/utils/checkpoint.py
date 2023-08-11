@@ -1,7 +1,8 @@
 import multiprocessing as mp
-import numpy as np
 import os
 import os.path as osp
+
+import numpy as np
 
 from .mask_encoder import rle_decode
 
@@ -13,8 +14,8 @@ def save_single_instance(root, scan_id, insts, benchmark_sem_id):
         assert scan_id == inst["scan_id"]
 
         # NOTE process to map label id to benchmark
-        label_id = inst["label_id"] # 1-> 18
-        label_id = label_id + 1 # 2-> 19 , 0,1: background
+        label_id = inst["label_id"]  # 1-> 18
+        label_id = label_id + 1  # 2-> 19 , 0,1: background
         label_id = benchmark_sem_id[label_id]
 
         # NOTE box
@@ -57,13 +58,13 @@ def save_gt_instance(path, gt_inst, nyu_id=None):
         sem = nyu_id[sem - 1]
         sem[ignore] = 0
         gt_inst = sem * 1000 + ins
-    np.savetxt(path, gt_inst, fmt='%d')
+    np.savetxt(path, gt_inst, fmt="%d")
 
 
 def save_gt_instances(root, name, scan_ids, gt_insts, nyu_id=None):
     root = osp.join(root, name)
     os.makedirs(root, exist_ok=True)
-    paths = [osp.join(root, f'{i}.txt') for i in scan_ids]
+    paths = [osp.join(root, f"{i}.txt") for i in scan_ids]
     pool = mp.Pool()
     nyu_ids = [nyu_id] * len(scan_ids)
     pool.starmap(save_gt_instance, zip(paths, gt_insts, nyu_ids))

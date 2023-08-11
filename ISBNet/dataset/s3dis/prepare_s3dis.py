@@ -1,12 +1,12 @@
+import glob
+import os
+import sys
+
+import configargparse
+import natsort
 import numpy as np
 import torch
 from scipy.spatial import KDTree
-
-import configargparse
-import glob
-import natsort
-import os
-import sys
 
 
 sys.path.append(".")

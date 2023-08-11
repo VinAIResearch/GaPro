@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from isbnet.ops import ballquery_batchflat, furthestsampling_batchflat
 from isbnet.pointnet2.pointnet2_utils import ball_query, furthest_point_sample
+
 from .module_utils import Conv1d, SharedMLP
 
 

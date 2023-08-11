@@ -70,3 +70,8 @@ work_dirs/
 pretrains/
 results/
 visualization/pyviz3d/
+
+
+ISBNet/dataset/scannetv2/gaussian_process_kl_pseudo_labels
+ISBNet/dataset/scannetv2/scans_transform
+gapro/dataset

@@ -1,9 +1,9 @@
-import numpy as np
-import torch
-
 import argparse
 import os.path as osp
+
+import numpy as np
 import pyviz3d.visualizer as viz
+import torch
 
 
 COLOR_DETECTRON2 = (

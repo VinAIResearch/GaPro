@@ -1,11 +1,11 @@
 # Adapted from https://github.com/ScanNet/ScanNet/blob/master/BenchmarkScripts/3d_evaluation/evaluate_semantic_instance.py  # noqa E501
 # Modified by Thang Vu
 
-import numpy as np
-
 import multiprocessing as mp
 from copy import deepcopy
-from isbnet.data.scannet200 import ScanNet200Dataset
+
+import numpy as np
+
 from ..util import rle_decode
 from .instance_eval_util import get_instances
 
@@ -245,14 +245,13 @@ class ScanNetEval(object):
         """get gt instances, only consider the valid class labels even in class
         agnostic setting."""
 
-                # NOTE process label gt for each type of dataset
-        if self.dataset_name == 'scannetv2':
+        # NOTE process label gt for each type of dataset
+        if self.dataset_name == "scannetv2":
             gts_sem = gts_sem + 1
-            gts_sem[gts_sem==19] = 0
+            gts_sem[gts_sem == 19] = 0
         else:
             gts_sem = gts_sem + 1
         gts_sem[gts_sem < 0] = 0
-
 
         gts_ins = gts_ins + 1
         ignore_inds = gts_ins < 0

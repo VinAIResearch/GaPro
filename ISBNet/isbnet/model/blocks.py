@@ -1,10 +1,10 @@
+import copy
+from collections import OrderedDict
+
 import spconv.pytorch as spconv
 import torch
 import torch.nn as nn
 from spconv.pytorch.modules import SparseModule
-
-import copy
-from collections import OrderedDict
 
 
 class BatchNormDim1Swap(nn.BatchNorm1d):

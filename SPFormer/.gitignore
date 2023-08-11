@@ -23,6 +23,8 @@ data/scannetv2/gp_deep_truekl_best
 
 data/semantic_kitti/sequences
 
+gapro/dataset
+
 exps
 results
 pretrains

@@ -1,9 +1,9 @@
-import torch
-from torch import distributed as dist
-
 import functools
 import os
 import pickle
+
+import torch
+from torch import distributed as dist
 
 
 def is_main_process():

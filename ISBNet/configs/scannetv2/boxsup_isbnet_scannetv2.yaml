@@ -32,7 +32,7 @@ data:
   train:
     type: 'scannetv2'
     data_root: 'dataset/scannetv2'
-    label_type: &label_type_ 'gp_deep_truekl_best'
+    label_type: &label_type_ 'gaussian_process_kl_pseudo_labels'
     prefix: 'train'
     suffix: '_inst_nostuff.pth'
     training: True

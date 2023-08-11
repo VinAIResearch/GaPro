@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 
+
 def rle_encode(mask):
     """Encode RLE (Run-length-encode) from 1D binary mask.
 
@@ -61,7 +62,7 @@ def rle_encode_gpu_batch(masks):
     for i in range(n_inst):
         mask = masks[i]
         runs = torch.nonzero(mask[1:] != mask[:-1]).view(-1) + 1
-        
+
         runs[1::2] -= runs[::2]
         # runs = np.where(mask[1:] != mask[:-1])[0] + 1
         # runs[1::2] -= runs[::2]
@@ -71,6 +72,7 @@ def rle_encode_gpu_batch(masks):
         rle = dict(length=length, counts=counts)
         rles.append(rle)
     return rles
+
 
 def rle_decode(rle):
     """Decode rle to get binary mask.

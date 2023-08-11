@@ -1,19 +1,19 @@
-import numpy as np
-import torch
-import yaml
-from munch import Munch
-from torch.nn.parallel import DistributedDataParallel
-
 import argparse
 import multiprocessing as mp
 import os
 import os.path as osp
 import time
 from functools import partial
+
+import numpy as np
+import torch
+import yaml
 from isbnet.data import build_dataloader, build_dataset
 from isbnet.evaluation import PointWiseEval, S3DISEval, ScanNetEval
 from isbnet.model import ISBNet
 from isbnet.util import get_root_logger, init_dist, load_checkpoint, rle_decode
+from munch import Munch
+from torch.nn.parallel import DistributedDataParallel
 
 
 def get_args():
@@ -109,7 +109,7 @@ def main():
 
     time_arr = []
 
-    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes+1)
+    point_eval = PointWiseEval(num_classes=cfg.model.instance_classes + 1)
     scannet_eval = ScanNetEval(dataset.CLASSES, dataset_name=cfg.data.train.type)
 
     if cfg.data.test.type == "s3dis":

@@ -123,4 +123,4 @@ class PointWiseEval(object):
             debug_acc = np.sum(np.array(self.debug_acc)) / np.sum(np.array(self.debug_acc_num_pos))
             logger.info("Mean accuracy of classification: {:.3f}".format(debug_acc))
 
-        return miou, acc, mae
+        return miou, acc, mae_vertices

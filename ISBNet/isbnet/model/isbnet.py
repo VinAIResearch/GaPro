@@ -1,11 +1,12 @@
+import functools
+import math
+
 import spconv.pytorch as spconv
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
-
-import functools
-import math
+import os
 from ..ops import voxelization
 from ..util import cuda_cast, rle_encode_gpu, rle_encode_gpu_batch
 from .aggregator import LocalAggregator
@@ -45,6 +46,7 @@ class ISBNet(nn.Module):
         filter_bg_thresh=0.1,
         iterative_sampling=True,
         mask_dim_out=32,
+        save_deepfeatures_path=None,
     ):
         super().__init__()
         self.channels = channels
@@ -70,6 +72,8 @@ class ISBNet(nn.Module):
 
         self.use_spp_pool = use_spp_pool
         self.filter_bg_thresh = filter_bg_thresh
+
+        self.save_deepfeatures_path = save_deepfeatures_path
 
         # NOTE iterative sampling
         self.iterative_sampling = iterative_sampling
@@ -98,7 +102,6 @@ class ISBNet(nn.Module):
         self.box_conf_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=2)
 
         if not self.semantic_only:
-
 
             self.mu_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=3)
             self.logvar_linear = MLP(channels, 1, norm_fn=norm_fn, num_layers=3)
@@ -183,8 +186,12 @@ class ISBNet(nn.Module):
         ]
         self.add_module("mask_tower", nn.Sequential(*mask_tower))
 
-        weight_nums = [(self.mask_dim_out + 3 + 3) * self.mask_dim_out, self.mask_dim_out * (self.mask_dim_out//2), (self.mask_dim_out//2) * 1]
-        bias_nums = [self.mask_dim_out, (self.mask_dim_out//2), 1]
+        weight_nums = [
+            (self.mask_dim_out + 3 + 3) * self.mask_dim_out,
+            self.mask_dim_out * (self.mask_dim_out // 2),
+            (self.mask_dim_out // 2) * 1,
+        ]
+        bias_nums = [self.mask_dim_out, (self.mask_dim_out // 2), 1]
 
         self.weight_nums = weight_nums
         self.bias_nums = bias_nums
@@ -317,9 +324,7 @@ class ISBNet(nn.Module):
         spp_semantic_scores_sm = custom_scatter_mean(
             voxel_semantic_scores_sm, voxel_spps, dim=0, pool=self.use_spp_pool
         )
-        spp_object_conditions = torch.any(
-            spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1
-        )
+        spp_object_conditions = torch.any(spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1)
         object_conditions = spp_object_conditions[voxel_spps]
         object_idxs = torch.nonzero(object_conditions).view(-1)
 
@@ -336,12 +341,12 @@ class ISBNet(nn.Module):
         voxel_batch_offsets_ = get_batch_offsets(voxel_batch_idxs_, batch_size)
 
         # NOTE check cuda error:
-        if len(voxel_batch_offsets_) != batch_size+1:
+        if len(voxel_batch_offsets_) != batch_size + 1:
             loss_dict = {
                 "placeholder": torch.tensor(0.0, requires_grad=True, device=semantic_labels.device, dtype=torch.float)
             }
             return self.parse_losses(loss_dict)
-        
+
         batch_numvoxels = voxel_batch_offsets_[1:] - voxel_batch_offsets_[:-1]
         if torch.any(batch_numvoxels <= 100):
             loss_dict = {
@@ -503,15 +508,21 @@ class ISBNet(nn.Module):
 
             return ret
 
+        # NOTE extract pretrained mask feats
+        if self.save_deepfeatures_path is not None:
+            voxel_mask_features = self.mask_tower(torch.unsqueeze(voxel_output_feats, dim=2).permute(2, 1, 0)).permute(2, 1, 0).squeeze(-1)
+            
+            save_path = os.path.join(self.save_deepfeatures_path, scan_ids[0] + ".pth")
+            torch.save((voxel_mask_features[v2p_map.long()].cpu().numpy()), save_path)
+            return None
+
         spp_semantic_scores_sm = custom_scatter_mean(
             voxel_semantic_scores_sm,
             voxel_spps[:, None].expand(-1, voxel_semantic_scores_sm.shape[-1]),
             pool=self.use_spp_pool,
         )
 
-        spp_object_conditions = torch.any(
-            spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1
-        )
+        spp_object_conditions = torch.any(spp_semantic_scores_sm[:, :-1] >= self.filter_bg_thresh, dim=-1)
         object_conditions = spp_object_conditions[voxel_spps]
 
         if object_conditions.sum() == 0:

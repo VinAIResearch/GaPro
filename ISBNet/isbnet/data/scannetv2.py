@@ -1,7 +1,8 @@
+import os.path as osp
+
 import numpy as np
 import torch
 
-import os.path as osp
 from .custom import CustomDataset
 
 
@@ -42,7 +43,9 @@ class ScanNetDataset(CustomDataset):
             var_label = np.zeros(xyz.shape[0], dtype=np.float)
         else:
             xyz, rgb, _, _ = torch.load(filename)
-            semantic_label, instance_label, prob_label, mu_label, var_label = torch.load(ps_filename) # NOTE best label
+            semantic_label, instance_label, prob_label, mu_label, var_label = torch.load(
+                ps_filename
+            )  # NOTE best label
 
         spp_filename = osp.join(self.data_root, "superpoints", scan_id + ".pth")
         spp = torch.load(spp_filename)
