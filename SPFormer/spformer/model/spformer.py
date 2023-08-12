@@ -6,7 +6,7 @@ import spconv.pytorch as spconv
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from spformer.utils import cuda_cast, rle_encode, rle_encode_gpu_batch
+from spformer.utils import cuda_cast, rle_encode_gpu_batch
 from torch_scatter import scatter_max, scatter_mean
 
 from .backbone import MLP, ResidualBlock, UBlock

@@ -2,14 +2,12 @@ import argparse
 import multiprocessing as mp
 import os
 import os.path as osp
-import time
 from functools import partial
 
 import numpy as np
 import torch
 import yaml
 from isbnet.data import build_dataloader, build_dataset
-from isbnet.evaluation import PointWiseEval, S3DISEval, ScanNetEval
 from isbnet.model import ISBNet
 from isbnet.util import get_root_logger, init_dist, load_checkpoint, rle_decode
 from munch import Munch
@@ -22,7 +20,7 @@ def get_args():
     parser.add_argument("checkpoint", type=str, help="path to checkpoint")
     parser.add_argument("--dist", action="store_true", help="run with distributed parallel")
     parser.add_argument("--save_deepfeatures_path", type=str, help="path to save deep features")
-    
+
     args = parser.parse_args()
     return args
 
@@ -114,6 +112,6 @@ def main():
             if i % 10 == 0:
                 logger.info(f"Infer scene {i+1}/{len(dataset)}")
 
-    # save output
+
 if __name__ == "__main__":
     main()

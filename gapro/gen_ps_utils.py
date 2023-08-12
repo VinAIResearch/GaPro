@@ -1,9 +1,8 @@
 import numpy as np
-import scipy.ndimage
 import torch
 import torch.nn.functional as F
 import torch_scatter
-from gaussian_process_utils import fit_gp, fit_gp_spp, fit_regression_model
+from gaussian_process_utils import fit_gp_spp
 from tqdm import tqdm
 
 
@@ -112,7 +111,7 @@ def spp_align_label(spp, label, n_classes=-1, bb_occupancy_spp=None, prob_label=
     )  # n_labels, n_spp
     # spp_mask = (mean_spp_inst > 0.5)
 
-    count_label_spp_sum = (count_label_spp).sum(dim=0)
+    # count_label_spp_sum = (count_label_spp).sum(dim=0)
 
     if bb_occupancy_spp is not None:
         count_label_spp[1:, :] = count_label_spp[1:, :] * (bb_occupancy_spp == 1).float()
@@ -350,7 +349,7 @@ def gen_pseudo_label_gaussian_process(
     bb_occupancy = is_within_bb_torch(
         coords_float[:, None, :], boxes[None, :, :3] - 0.005, boxes[None, :, 3:] + 0.005
     )  # N_points, N_box
-    num_BBs_per_point = bb_occupancy.long().sum(dim=1)
+    # num_BBs_per_point = bb_occupancy.long().sum(dim=1)
 
     coords_float_spp = torch_scatter.scatter(
         coords_float, spp[:, None].expand(-1, coords_float.shape[1]), dim=0, reduce="mean"
@@ -452,7 +451,7 @@ def gen_pseudo_label_gaussian_process(
         bb_occupancy_spp[(n_bbs_per_spp > 1) & (is_determined == 0), :], as_tuple=True
     )
     min_volume, argmin_volume = torch_scatter.scatter_min(boxes_volume[box_inds], point_inds, dim=0)
-    sum_volume = torch_scatter.scatter(boxes_volume[box_inds].float(), point_inds, dim=0, reduce="sum")
+    # sum_volume = torch_scatter.scatter(boxes_volume[box_inds].float(), point_inds, dim=0, reduce="sum")
 
     corres_multibox_active = box_inds[argmin_volume]
 

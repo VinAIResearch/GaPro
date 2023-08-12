@@ -86,7 +86,7 @@ def train(epoch, model, dataloader, optimizer, lr_scheduler, cfg, logger, writer
 @torch.no_grad()
 def eval(epoch, model, dataloader, cfg, logger, writer):
     logger.info("Validation")
-    pred_insts, gt_insts = [], []
+    pred_insts = []
     sem_labels, ins_labels = [], []
     progress_bar = tqdm(total=len(dataloader))
     val_dataset = dataloader.dataset

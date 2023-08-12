@@ -1,4 +1,4 @@
-### ScanNet Benchmark constants ###
+# ScanNet Benchmark constants ###
 VALID_CLASS_IDS_20 = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39)
 
 CLASS_LABELS_20 = (
@@ -66,7 +66,7 @@ SCANNET_COLOR_MAP_20 = {
     40: (100.0, 85.0, 144.0),
 }
 
-### ScanNet200 Benchmark constants ###
+# ScanNet200 Benchmark constants ###
 VALID_CLASS_IDS_200 = (
     1,
     2,
@@ -677,7 +677,7 @@ SCANNET_COLOR_MAP_200 = {
     1191: (42.0, 94.0, 198.0),
 }
 
-### For instance segmentation the non-object categories ###
+# For instance segmentation the non-object categories ###
 VALID_PANOPTIC_IDS = (1, 3)
 
 CLASS_LABELS_PANOPTIC = ("wall", "floor")

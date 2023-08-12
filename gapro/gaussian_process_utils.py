@@ -35,7 +35,7 @@ def fit_gp(
 
     intersect_coords = coords_float[intersect_inds]
     intersect_feats = feats[intersect_inds]
-    intersect_spp = spp[intersect_inds]
+    # intersect_spp = spp[intersect_inds]
     intersect_centroid = intersect_coords.mean(0)
 
     b1_coords = coords_float[b1_inds]
@@ -293,16 +293,16 @@ def fit_regression_model(feats, spp, b1_inds, b2_inds, intersect_inds, training_
 
     # intersect_coords = coords_float[intersect_inds]
     intersect_feats = feats[intersect_inds]
-    intersect_spp = spp[intersect_inds]
+    # intersect_spp = spp[intersect_inds]
     # intersect_centroid = intersect_coords.mean(0)
 
     # b1_coords = coords_float[b1_inds]
     b1_feats = feats[b1_inds]
-    b1_spp = spp[b1_inds]
+    # b1_spp = spp[b1_inds]
 
     # b2_coords = coords_float[b2_inds]
     b2_feats = feats[b2_inds]
-    b2_spp = spp[b2_inds]
+    # b2_spp = spp[b2_inds]
 
     # _, b1_spp = torch.unique(b1_spp, return_inverse=True)
     # b1_feats = torch_scatter.scatter(b1_feats, b1_spp[:, None].expand(-1, b1_feats.shape[1]), dim=0, reduce="mean")

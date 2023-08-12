@@ -4,10 +4,9 @@ from glob import glob
 
 import argparse
 import numpy as np
-import open3d as o3d
 import torch
-from eval_ps_labels import get_miou_scene, get_miou_scene2
-from gen_ps_utils import gen_pseudo_label_box2mask, gen_pseudo_label_gaussian_process, getInstanceInfo, is_within_bb_np
+from eval_ps_labels import get_miou_scene
+from gen_ps_utils import gen_pseudo_label_gaussian_process, getInstanceInfo
 from scannet_planes import get_wall_boxes
 from tqdm import tqdm
 
@@ -89,7 +88,6 @@ if __name__ == "__main__":
             wall_box = torch.from_numpy(wall_box).float().cuda()
             wall_volume = torch.from_numpy(wall_volume).float().cuda()
 
-
         (
             ps_semantic_label,
             ps_instance_label,
@@ -115,13 +113,12 @@ if __name__ == "__main__":
         #                                                                             instance_cls, instance_box, instance_box_volume, \
         #                                                                             instance_classes=18, dataset_name="scannetv2")
 
-
         if args.eval_pslabel:
             semantic_label = torch.from_numpy(semantic_label).cuda().int()
             instance_label = torch.from_numpy(instance_label).cuda().int()
             semantic_label_ori = semantic_label.clone()
-            semantic_label[semantic_label!=-100] -= 2
-            semantic_label[(semantic_label==-1) | (semantic_label==-2)] = 18
+            semantic_label[semantic_label != -100] -= 2
+            semantic_label[(semantic_label == -1) | (semantic_label == -2)] = 18
             ious = get_miou_scene(semantic_label.long(), instance_label.long(), ps_semantic_label.long(), ps_instance_label.long())
             print('miou', ious)
             ious_arr.append(ious)

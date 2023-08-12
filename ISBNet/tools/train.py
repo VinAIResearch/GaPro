@@ -135,10 +135,11 @@ def validate(epoch, model, optimizer, val_loader, cfg, logger, writer):
                 logger.info(f"Infer scene {i+1}/{len(val_set)}")
 
             if cfg.data.train.type == "scannetv2":
-                try:
-                    xyz, _, semantic_label, instance_label = torch.load(val_set.filenames[i])
-                except:
-
+                loaded_data = torch.load(val_set.filenames[i])
+                if len(loaded_data) == 4:
+                    xyz, _, semantic_label, instance_label = loaded_data
+                else:
+                    xyz, _ = loaded_data
                     semantic_label = np.zeros(res["coords_float"].shape[0], dtype=np.long)
                     instance_label = np.zeros(res["coords_float"].shape[0], dtype=np.long)
 

@@ -5,7 +5,7 @@ import multiprocessing as mp
 from copy import deepcopy
 
 import numpy as np
-from spformer.utils import cuda_cast, rle_decode, rle_encode, rle_encode_gpu_batch
+from spformer.utils import rle_decode
 
 from .instance_eval_util import get_instances
 

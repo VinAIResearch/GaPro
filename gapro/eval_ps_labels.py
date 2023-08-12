@@ -180,7 +180,6 @@ def main():
     # scenes = ['scene0169_00']
 
     ious_arr = []
-    sem_acc_arr = []
 
     num_classes = 19
     conf_metric = torch.zeros((num_classes, num_classes), dtype=torch.long).cuda()
@@ -196,7 +195,7 @@ def main():
         # semantic_label_ori = semantic_label.clone()
         semantic_label[semantic_label != -100] -= 2
         semantic_label[(semantic_label == -1) | (semantic_label == -2)] = 18
-        valid_inds = (semantic_label != -100) & (semantic_label != 18)
+        # valid_inds = (semantic_label != -100) & (semantic_label != 18)
 
         if not os.path.exists(os.path.join(PS_LABLES_FOLDER, f"{scene}.pth")):
             continue

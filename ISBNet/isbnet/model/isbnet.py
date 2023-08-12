@@ -264,7 +264,7 @@ class ISBNet(nn.Module):
 
         voxel_coords_float = voxelization(coords_float, p2v_map)
 
-        ### NOTE label_shift=0
+        # NOTE label_shift=0
         instance_cls, instance_box, centroid_offset_labels, corners_offset_labels = get_instance_info(
             voxel_coords_float, voxel_instance_labels, voxel_semantic_labels, label_shift=0
         )
@@ -511,7 +511,6 @@ class ISBNet(nn.Module):
         # NOTE extract pretrained mask feats
         if self.save_deepfeatures_path is not None:
             voxel_mask_features = self.mask_tower(torch.unsqueeze(voxel_output_feats, dim=2).permute(2, 1, 0)).permute(2, 1, 0).squeeze(-1)
-            
             save_path = os.path.join(self.save_deepfeatures_path, scan_ids[0] + ".pth")
             torch.save((voxel_mask_features[v2p_map.long()].cpu().numpy()), save_path)
             return None

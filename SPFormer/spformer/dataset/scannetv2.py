@@ -52,6 +52,7 @@ class ScanNetDataset(Dataset):
         use_xyz=True,
         logger=None,
         repeat=1,
+        label_type='default',
     ):
         self.data_root = data_root
         self.prefix = prefix
@@ -64,6 +65,7 @@ class ScanNetDataset(Dataset):
         self.use_xyz = use_xyz
         self.logger = logger
         self.repeat = repeat
+        self.label_type = label_type
         self.filenames = self.get_filenames()
         self.logger.info(f"Load {self.prefix} dataset: {len(self.filenames)} scans")
 
@@ -266,15 +268,14 @@ class ScanNetDataset(Dataset):
         filename = self.filenames[index]
         scan_id = osp.basename(filename).replace(self.suffix, "")
         spp_filename = osp.join(self.data_root, "superpoints", scan_id + ".pth")
-        ps_filename = osp.join(self.data_root, "gp_deep_truekl_best", scan_id + ".pth")
+        ps_filename = osp.join(self.data_root, self.label_type, scan_id + ".pth")
 
-        try:
+        if self.prefix != 'test':
             xyz, rgb, _, _ = torch.load(filename)
             semantic_label, instance_label, prob_label, mu_label, var_label = torch.load(
                 ps_filename
-            )  # NOTE best label
-
-        except:
+            )
+        else:
             xyz, rgb = torch.load(filename)
 
             semantic_label = np.zeros((xyz.shape[0]), dtype=np.long)

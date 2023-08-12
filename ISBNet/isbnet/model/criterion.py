@@ -386,14 +386,14 @@ class Criterion(nn.Module):
 
         dc_inst_mask_arr = model_outputs["dc_inst_mask_arr"]
         dc_prob_labels = model_outputs["dc_prob_labels"]
-        dc_mu_labels = model_outputs["dc_mu_labels"]
-        dc_var_labels = model_outputs["dc_var_labels"]
+        # dc_mu_labels = model_outputs["dc_mu_labels"]
+        # dc_var_labels = model_outputs["dc_var_labels"]
         dc_batch_offsets = model_outputs["dc_batch_offsets"]
 
         dc_rgb_feats = model_outputs["dc_rgb_feats"]
         dc_coords_float = model_outputs["dc_coords_float"]
 
-        batch_size, n_queries = cls_logits.shape[:2]
+        batch_size = cls_logits.shape[:1]
 
         gt_dict, _ = self.matcher.forward_dup(
             cls_logits,

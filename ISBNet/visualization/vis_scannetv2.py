@@ -226,7 +226,7 @@ COLOR_DETECTRON2 = (
     * 255
 )
 
-### ScanNet Benchmark constants ###
+# ScanNet Benchmark constants ###
 VALID_CLASS_IDS_20 = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 24, 28, 33, 34, 36, 39)
 
 CLASS_LABELS_20 = (
@@ -404,7 +404,7 @@ def main():
     instance_label = instance_label[mask_valid]
 
     if "input" in vis_tasks:
-        v.add_points(f"input", xyz, rgb, point_size=args.point_size)
+        v.add_points("input", xyz, rgb, point_size=args.point_size)
 
     if "sem_gt" in vis_tasks:
         sem_label_rgb = np.zeros_like(rgb)
@@ -416,7 +416,7 @@ def main():
             color_ = COLOR_MAP[remap_sem_id]
             sem_label_rgb[semantic_label == sem] = color_
 
-        v.add_points(f"sem_gt", xyz, sem_label_rgb, point_size=args.point_size)
+        v.add_points("sem_gt", xyz, sem_label_rgb, point_size=args.point_size)
 
     if "inst_gt" in vis_tasks:
         inst_unique = np.unique(instance_label)
@@ -426,7 +426,7 @@ def main():
                 continue
             inst_label_rgb[instance_label == ind] = COLOR_DETECTRON2[ind % 68]
 
-        v.add_points(f"inst_gt", xyz, inst_label_rgb, point_size=args.point_size)
+        v.add_points("inst_gt", xyz, inst_label_rgb, point_size=args.point_size)
 
     if "superpoint" in vis_tasks:
         spp = torch.load(f"{args.data_root}/superpoints/{args.scene_name}.pth")
@@ -437,11 +437,11 @@ def main():
         for i, u_ in enumerate(unique_spp):
             superpoint_rgb[spp == u_] = COLOR_DETECTRON2[i % 68]
 
-        v.add_points(f"superpoint", xyz, superpoint_rgb, point_size=args.point_size)
+        v.add_points("superpoint", xyz, superpoint_rgb, point_size=args.point_size)
 
     if "inst_pred" in vis_tasks:
         pred_rgb = get_pred_color(args.scene_name, mask_valid, args.prediction_path)
-        v.add_points(f"inst_pred", xyz, pred_rgb, point_size=args.point_size)
+        v.add_points("inst_pred", xyz, pred_rgb, point_size=args.point_size)
 
     v.save("visualization/pyviz3d")
 
