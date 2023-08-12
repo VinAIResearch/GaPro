@@ -6,7 +6,7 @@
 6. [Acknowledgments](#Acknowledgments)
 7. [Contacts](#Contacts)
 
-# GaPro: Box-Supervised 3D Point Cloud Instance Segmentation \\Using Gaussian Processes as Pseudo Labelers
+# GaPro: Box-Supervised 3D Point Cloud Instance Segmentation Using Gaussian Processes as Pseudo Labelers
 
 <a href="https://arxiv.org/abs/2307.13251"><img src="https://img.shields.io/badge/https%3A%2F%2Farxiv.org%2Fabs%2F2307.13251-arxiv-brightgreen"></a>
 
