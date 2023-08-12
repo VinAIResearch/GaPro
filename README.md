@@ -3,7 +3,6 @@
 2. [Data Preparation](#Data-Preparation)
 3. [Training and Testing](#Training-and-Testing) 
 4. [Quick Demo](#Quick-Demo)
-5. [Visualization](#Qualitative-Results)
 6. [Acknowledgments](#Acknowledgments)
 7. [Contacts](#Contacts)
 
@@ -49,26 +48,24 @@ Please refer to [training guide](docs/TRAIN.md).
 | Method | Dataset | AP | AP_50 | Config | Checkpoint
 |:-:|:-:|:-:|:-:|:-:|:-:|
 | GaPro + ISBNet | Test | 49.3 | 69.8 | 
-| ''| Val | 50.6 | 69.1 | [config](configs/scannetv2/isbnet_scannetv2.yaml) | [checkpoint](https://drive.google.com/file/d/19FYLM5SzcQSKYR4r9iChauf5cleoXC_H/view?usp=drive_link) 
+| ''| Val | 50.6 | 69.1 | [config](ISBNet/configs/scannetv2/boxsup_isbnet_scannetv2.yaml) | TBD 
 | GaPro + SPFormer | Test | 48.2 | 68.2 | 
-| ''| Val | 51.1 | 70.4 | [config](configs/scannetv2/isbnet_scannetv2.yaml) | [checkpoint](https://drive.google.com/file/d/19FYLM5SzcQSKYR4r9iChauf5cleoXC_H/view?usp=drive_link) 
+| ''| Val | 51.1 | 70.4 | [config](SPFormer/configs/boxsup_spf_scannet.yaml) | TBD
 
 
-### [S3DIS](http://buildingparser.stanford.edu/dataset.html)
+### [S3DIS](http://buildingparser.stanford.edu/dataset.html): TBD
 
 | Method | Dataset | AP | AP_50 | Config | Checkpoint
 |:-:|:-:|:-:|:-:|:-:|:-:|
-| GaPro + ISBNet | Area 5 | 56.3 | 67.5 | [config](configs/s3dis/isbnet_s3dis_area5.yaml) | [checkpoint](https://drive.google.com/file/d/1oup4nEdgsmdwnMP1TQPmoIqZ8c1RoTgA/view?usp=share_link) 
+| GaPro + ISBNet | Area 5 | 56.3 | 67.5 | TBD | TBD 
 
 Run evaluation with pre-trained models:
 
 ```
+cd ISBNet/ # or SPFormer
 python3 tools/test.py <path_to_config_file> <path_to_pretrain_weight>
 ```
 
-## Visualization :computer:
-Please refer to [visualization guide](visualization/README.md).
-We provide the qualitative results of our method at [here](docs/QUALITATIVE.md)
 
 ## Acknowledgements :clap:
 This repo is built upon [SpConv](https://github.com/traveller59/spconv), [ISBNet](https://github.com/VinAIResearch/ISBNet), and [SPFormer](https://github.com/sunjiahao1999/SPFormer). 
