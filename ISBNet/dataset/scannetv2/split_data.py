@@ -6,6 +6,8 @@ import shutil
 
 splits = ["train", "val", "test"]
 
+os.makedirs("scans_transform", exist_ok=True)
+
 for split in splits:
     print("processing", split)
     f_name = "scannetv2_{}.txt".format(split)
@@ -34,4 +36,12 @@ for split in splits:
             src = "scans/{}/{}.aggregation.json".format(scan, scan)
             dest = "{}/{}.aggregation.json".format(split, scan)
             shutil.copyfile(src, dest)
+
+        # NOTE copy scan_transform
+        src = "scans/{}/{}.txt".format(scan, scan)
+        if os.path.exists(src):
+            os.makedirs("scans_transform/" + scan, exist_ok=True)
+            dest = "{}/{}.txt".format("scans_transform", scan)
+            shutil.copyfile(src, dest)
+        
 print("done")

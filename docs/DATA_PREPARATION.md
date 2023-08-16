@@ -35,6 +35,7 @@ GaPro
 │   │   │   ├── val
 │   │   │   ├── test
 │   │   │   ├── superpoints
+│   │   │   ├── scans_transform
 ```
 
 ## S3DIS dataset

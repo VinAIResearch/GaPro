@@ -36,7 +36,7 @@ Details of the model architecture and experimental results can be found in [our 
 Please refer to [installation guide](docs/INSTALL.md).
 
 ## Data Preparation :hammer:
-Please refer to [data preparation](dataset/README.md).
+Please refer to [data preparation](docs/DATA_PREPARATION.md).
 
 ## Training and Testing :train2:
 Please refer to [training guide](docs/TRAIN.md).
