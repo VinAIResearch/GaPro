@@ -48,9 +48,9 @@ Please refer to [training guide](docs/TRAIN.md).
 | Method | Dataset | AP | AP_50 | Config | Checkpoint
 |:-:|:-:|:-:|:-:|:-:|:-:|
 | GaPro + ISBNet | Test | 49.3 | 69.8 | 
-| ''| Val | 50.6 | 69.1 | [config](ISBNet/configs/scannetv2/boxsup_isbnet_scannetv2.yaml) | TBD 
+| ''| Val | 50.6 | 69.1 | [config](ISBNet/configs/scannetv2/boxsup_isbnet_scannetv2.yaml) | [Google Drive](https://drive.google.com/file/d/12pOUuMg2cOYmCAv98t4ggNXOEqArTR_M/view?usp=drive_link) 
 | GaPro + SPFormer | Test | 48.2 | 68.2 | 
-| ''| Val | 51.1 | 70.4 | [config](SPFormer/configs/boxsup_spf_scannet.yaml) | TBD
+| ''| Val | 51.1 | 70.4 | [config](SPFormer/configs/boxsup_spf_scannet.yaml) | [Google Drive](https://drive.google.com/file/d/1vdrOncS1UtwA7PLprd84KajYdlaWEkiY/view?usp=drive_link)
 
 
 ### [S3DIS](http://buildingparser.stanford.edu/dataset.html): TBD
